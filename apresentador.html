@@ -20,14 +20,16 @@
 <style>
   .tela {
     max-width: 1480px; margin: 0 auto;
-    padding: 26px clamp(16px, 3vw, 44px);
-    min-height: 100vh; display: flex; flex-direction: column; gap: 22px;
+    padding: 14px clamp(12px, 2.5vw, 36px);
+    height: 100vh; display: flex; flex-direction: column; gap: 14px;
+    overflow: hidden;
   }
 
   /* Cabeçalho */
   .topo { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   .topo .marca { font-size: clamp(18px, 2vw, 24px); }
   .topo-dir { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .topo .logo { height: 46px; }
 
   .aviso-demo {
     width: 100%;
@@ -40,9 +42,9 @@
   .aviso-demo b { color: var(--ouro); }
 
   /* Corpo: palco + lateral */
-  .corpo { display: grid; grid-template-columns: 1fr 350px; gap: 22px; align-items: start; }
+  .corpo { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: start; flex: 1; min-height: 0; }
 
-  .palco { padding: clamp(20px, 2.4vw, 34px); }
+  .palco { padding: clamp(14px, 2vw, 24px); }
   .pergunta-rotulo {
     font-family: var(--fonte-display); font-weight: 700;
     letter-spacing: 0.18em; text-transform: uppercase;
@@ -51,15 +53,15 @@
   .pergunta-texto {
     font-family: var(--fonte-display); font-weight: 700;
     font-size: clamp(24px, 2.7vw, 38px); line-height: 1.18;
-    text-wrap: balance; margin-bottom: 26px;
+    text-wrap: balance; margin-bottom: 16px;
   }
 
-  .opcoes { display: grid; gap: 14px; }
+  .opcoes { display: grid; gap: 10px; }
   .opcao {
     position: relative; overflow: hidden;
-    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px;
-    padding: 14px 20px 14px 14px;
-    min-height: 84px;
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px;
+    padding: 10px 16px 10px 10px;
+    min-height: 66px;
     border-radius: var(--raio);
     background: linear-gradient(180deg, oklch(0.31 0.10 262), oklch(0.21 0.09 264));
     border: 1px solid oklch(0.58 0.10 256 / 0.7);
@@ -78,10 +80,10 @@
     transition: width .85s cubic-bezier(.22,.61,.36,1), background .35s ease, opacity .35s ease;
     z-index: 0;
   }
-  .opcao .letra { position: relative; z-index: 2; width: 58px; height: 58px; border-radius: 14px; font-size: 26px; }
-  .opcao .op-texto { position: relative; z-index: 2; font-size: clamp(16px, 1.5vw, 21px); font-weight: 600; line-height: 1.25; }
+  .opcao .letra { position: relative; z-index: 2; width: 46px; height: 46px; border-radius: 12px; font-size: 21px; }
+  .opcao .op-texto { position: relative; z-index: 2; font-size: clamp(14px, 1.4vw, 19px); font-weight: 600; line-height: 1.25; }
   .opcao .op-num { position: relative; z-index: 2; text-align: right; font-family: var(--fonte-display); }
-  .opcao .op-num b { display: block; font-size: 30px; font-weight: 800; line-height: 1; }
+  .opcao .op-num b { display: block; font-size: 24px; font-weight: 800; line-height: 1; }
   .opcao .op-num span { font-size: 13px; color: var(--tx-suave); font-weight: 600; }
 
   /* Estados de revelação */
@@ -102,35 +104,35 @@
   .opcao.correta .op-num { display: none; }
 
   /* Lateral */
-  .lateral { display: grid; gap: 18px; }
-  .bloco { padding: 20px; }
+  .lateral { display: grid; gap: 10px; }
+  .bloco { padding: 14px; }
   .bloco h3 {
     font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase;
-    color: var(--tx-fraco); margin-bottom: 14px; font-weight: 700;
+    color: var(--tx-fraco); margin-bottom: 10px; font-weight: 700;
   }
 
   .timer-wrap { display: grid; place-items: center; gap: 6px; }
   .timer-ring {
-    position: relative; width: 188px; height: 188px; border-radius: 50%;
+    position: relative; width: 148px; height: 148px; border-radius: 50%;
     display: grid; place-items: center;
     background: conic-gradient(var(--cor-timer, var(--ouro)) calc(var(--frac, 1) * 360deg), oklch(0.30 0.04 262) 0deg);
     transition: background .9s linear;
   }
   .timer-disc {
-    width: 150px; height: 150px; border-radius: 50%;
+    width: 118px; height: 118px; border-radius: 50%;
     background: radial-gradient(circle at 50% 35%, var(--bg-2), var(--bg-1));
     display: grid; place-items: center; gap: 2px;
     box-shadow: inset 0 2px 10px oklch(0 0 0 / 0.4);
   }
-  .timer-num { font-family: var(--fonte-display); font-weight: 800; font-size: 56px; line-height: 1; }
+  .timer-num { font-family: var(--fonte-display); font-weight: 800; font-size: 44px; line-height: 1; }
   .timer-lbl { font-size: 12px; color: var(--tx-fraco); letter-spacing: 0.12em; text-transform: uppercase; }
   .timer-ring.baixo .timer-num { color: var(--errado); }
 
   /* Placar */
-  .placar-num { font-family: var(--fonte-display); font-weight: 800; font-size: 46px; line-height: 1; }
-  .placar-num span { color: var(--tx-fraco); font-size: 26px; }
-  .placar-sub { color: var(--tx-suave); font-size: 14px; margin-top: 4px; }
-  .placar-pts { display: flex; gap: 7px; margin-top: 14px; flex-wrap: wrap; }
+  .placar-num { font-family: var(--fonte-display); font-weight: 800; font-size: 38px; line-height: 1; }
+  .placar-num span { color: var(--tx-fraco); font-size: 20px; }
+  .placar-sub { color: var(--tx-suave); font-size: 13px; margin-top: 4px; }
+  .placar-pts { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
   .pt { width: 16px; height: 16px; border-radius: 5px; background: var(--bg-2); border: 1px solid var(--linha); }
   .pt.ok { background: var(--certo); border-color: var(--certo); }
   .pt.no { background: var(--errado); border-color: var(--errado); opacity: .8; }
@@ -140,13 +142,14 @@
   #qrApresentador { background: #fff; padding: 10px; border-radius: 12px; line-height: 0; }
   #qrApresentador img, #qrApresentador canvas { display: block; }
   .entrada-url {
-    margin-top: 12px; font-size: 12.5px; color: var(--tx-suave);
+    margin-top: 8px; font-size: 11.5px; color: var(--tx-suave);
     word-break: break-all; text-align: center;
   }
   .entrada-url b { color: var(--ouro-claro); }
 
   /* Controles */
-  .controles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .controles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .controles .btn { padding: 12px 16px; font-size: 15px; }
 
   @media (max-width: 1080px) {
     .corpo { grid-template-columns: 1fr; }
@@ -377,7 +380,8 @@ function reiniciarQuiz() {
   RTDB.remove("quiz/respostas");
   RTDB.remove("quiz/pontuacao");
   RTDB.update("quiz/estado", {
-    perguntaAtual: 0, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO
+    perguntaAtual: 0, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO,
+    sessao: ((estado && estado.sessao) || 0) + 1
   });
 }
 

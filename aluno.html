@@ -242,7 +242,7 @@ function registrarPresenca() {
 /* ---------------------------------------------------------------------------
    Voto
 --------------------------------------------------------------------------- */
-function chaveVotoLocal(idx) { return "quiz_voto_q" + idx; }
+function chaveVotoLocal(idx) { return "quiz_voto_q" + idx + "_s" + ((estado && estado.sessao) || 0); }
 function meuVoto(idx)        { return localStorage.getItem(chaveVotoLocal(idx)); }
 
 function votar(idx, letra) {
