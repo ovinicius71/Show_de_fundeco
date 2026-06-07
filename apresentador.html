@@ -454,7 +454,11 @@ function render() {
    Boot
 --------------------------------------------------------------------------- */
 (async function () {
-  await garantirEstadoInicial();
+  try {
+    await garantirEstadoInicial();
+  } catch (e) {
+    console.warn("[Boot] garantirEstadoInicial falhou, continuando mesmo assim:", e);
+  }
   assinarTudo();
   // Atualiza a contagem de "conectados" periodicamente (descarta presenças velhas).
   setInterval(render, 5000);
