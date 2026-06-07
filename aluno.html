@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Aluno · Quiz ao vivo</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Firebase (SDK v8 compat) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<!-- QR Code (mostrado na tela de entrada) -->
+<script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+
+<link rel="stylesheet" href="styles.css">
+<style>
+  .app {
+    max-width: 520px; margin: 0 auto; min-height: 100vh; min-height: 100dvh;
+    padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  /* Cabeçalho compacto */
+  .cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .cab .marca { font-size: 15px; }
+  .cab .eu { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--tx-suave); }
+  .cab .eu .ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--certo); box-shadow: 0 0 0 3px oklch(0.72 0.18 150 / 0.25); }
+
+  /* ---------------- Tela de entrada ---------------- */
+  .entrada { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+  .entrada .cartao { padding: 28px 24px; text-align: center; }
+  .entrada h1 { font-size: 26px; margin-bottom: 6px; }
+  .entrada .sub { color: var(--tx-suave); font-size: 14.5px; margin-bottom: 22px; line-height: 1.4; }
+  .campo {
+    width: 100%; padding: 16px 18px; font-size: 17px; font-family: var(--fonte-texto);
+    color: var(--tx); background: var(--bg-0); border: 1px solid var(--linha);
+    border-radius: var(--raio-sm); outline: none; text-align: center; font-weight: 600;
+  }
+  .campo:focus { border-color: var(--ouro); box-shadow: 0 0 0 3px oklch(0.83 0.135 85 / 0.18); }
+  .btn-grande { width: 100%; padding: 18px; font-size: 18px; margin-top: 14px; }
+
+  .qr-entrada { margin-top: 22px; display: grid; place-items: center; gap: 10px; }
+  #qrAluno { background: #fff; padding: 9px; border-radius: 10px; line-height: 0; }
+  #qrAluno img, #qrAluno canvas { display: block; }
+  .qr-leg { font-size: 12px; color: var(--tx-fraco); }
+
+  /* ---------------- Tela do quiz ---------------- */
+  .quiz { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+
+  .barra-status {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 16px; border-radius: 999px;
+    background: var(--bg-1); border: 1px solid var(--linha);
+    font-size: 13px; font-weight: 600; color: var(--tx-suave);
+  }
+  .barra-status .tempo { font-family: var(--fonte-display); font-weight: 800; font-size: 16px; color: var(--ouro); }
+  .barra-status .tempo.baixo { color: var(--errado); animation: pulso 1s infinite; }
+
+  .pergunta-cartao { padding: 20px; }
+  .pergunta-cartao .rotulo {
+    font-family: var(--fonte-display); font-weight: 700; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ouro); font-size: 11px; margin-bottom: 10px;
+  }
+  .pergunta-cartao .texto { font-family: var(--fonte-display); font-weight: 700; font-size: 20px; line-height: 1.3; text-wrap: pretty; }
+
+  .botoes { display: grid; gap: 12px; }
+  .voto {
+    position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px;
+    width: 100%; text-align: left; cursor: pointer;
+    padding: 14px; min-height: 64px;
+    border-radius: var(--raio); border: 2px solid var(--linha);
+    background: var(--bg-2); color: var(--tx);
+    font-family: var(--fonte-texto); font-size: 16px; font-weight: 600; line-height: 1.25;
+    transition: transform .12s ease, box-shadow .2s ease, opacity .25s ease, border-color .2s ease, background .2s ease;
+  }
+  .voto:active { transform: scale(0.98); }
+  .voto .letra { width: 46px; height: 46px; border-radius: 12px; font-size: 22px; }
+  .voto .check { font-family: var(--fonte-display); font-weight: 800; font-size: 20px; opacity: 0; }
+
+  /* selecionado pelo aluno */
+  .voto.escolhido { border-color: var(--op-cor); box-shadow: 0 0 0 2px var(--op-cor), 0 0 26px -8px var(--op-glow); }
+  .voto.escolhido .check { opacity: 1; color: var(--op-cor); }
+  /* travado (já votou ou votação fechada) */
+  .voto.travado { cursor: default; }
+  .voto.travado:not(.escolhido) { opacity: 0.45; }
+  .voto:disabled { cursor: default; }
+
+  /* revelação */
+  .voto.certa { border-color: var(--certo); box-shadow: 0 0 0 2px var(--certo), 0 0 30px -8px oklch(0.72 0.18 150 / 0.7); opacity: 1; }
+  .voto.certa .letra { background: var(--certo); }
+  .voto.certa .check { opacity: 1; color: var(--certo); }
+  .voto.errada-escolhida { border-color: var(--errado); box-shadow: 0 0 0 2px var(--errado); opacity: 1; }
+  .voto.errada-escolhida .letra { background: var(--errado); }
+
+  /* Caixa de feedback / status grande */
+  .feedback { padding: 20px; text-align: center; border-radius: var(--raio); animation: surgir .35s ease; }
+  .feedback .icone { font-size: 40px; line-height: 1; }
+  .feedback .titulo { font-family: var(--fonte-display); font-weight: 800; font-size: 22px; margin-top: 6px; }
+  .feedback .desc { color: var(--tx-suave); font-size: 14px; margin-top: 6px; }
+  .feedback.acerto { background: oklch(0.72 0.18 150 / 0.14); border: 1px solid var(--certo); }
+  .feedback.acerto .titulo { color: var(--certo); }
+  .feedback.erro { background: oklch(0.63 0.20 25 / 0.14); border: 1px solid var(--errado); }
+  .feedback.erro .titulo { color: var(--errado); }
+  .feedback.neutro { background: var(--bg-1); border: 1px solid var(--linha); }
+  .feedback.neutro .titulo { color: var(--tx); font-size: 18px; }
+  .feedback.neutro .icone { font-size: 30px; }
+  .feedback.neutro.aguardando .icone { animation: pulso 1.4s infinite; }
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <header class="cab">
+    <div class="marca"><span class="losango"></span><span class="nome" id="nomeQuiz">QUIZ</span></div>
+    <div class="eu esconder" id="cabEu"><span class="ponto"></span><span id="meuNome">—</span></div>
+  </header>
+
+  <!-- ====================== TELA DE ENTRADA ====================== -->
+  <section class="entrada" id="telaEntrada">
+    <div class="cartao">
+      <h1>Bem-vindo(a)!</h1>
+      <p class="sub">Digite seu nome para participar do quiz ao vivo.</p>
+      <input class="campo" id="inputNome" type="text" placeholder="Seu nome" maxlength="24" autocomplete="off">
+      <button class="btn btn-ouro btn-grande" id="btnEntrar">Entrar no quiz</button>
+
+      <div class="qr-entrada">
+        <div id="qrAluno"></div>
+        <div class="qr-leg">Compartilhe este QR para outros colegas entrarem</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====================== TELA DO QUIZ ====================== -->
+  <section class="quiz esconder" id="telaQuiz">
+    <div class="barra-status">
+      <span id="statusRotulo">Pergunta 1 de 3</span>
+      <span class="tempo" id="statusTempo">—</span>
+    </div>
+
+    <div class="pergunta-cartao cartao">
+      <div class="rotulo" id="qRotulo">Pergunta</div>
+      <div class="texto" id="qTexto">…</div>
+    </div>
+
+    <div class="botoes" id="botoes"><!-- preenchido via JS --></div>
+
+    <div class="feedback neutro esconder" id="feedback"></div>
+  </section>
+</div>
+
+<script src="config.js"></script>
+<script src="db.js"></script>
+<script>
+/* ============================================================================
+   CONTROLADOR DO ALUNO
+   ----------------------------------------------------------------------------
+   - Identidade (nome + userId) guardada no localStorage.
+   - O VOTO é registrado no RTDB (nunca no localStorage). Guardamos localmente
+     apenas QUAL opção este aluno escolheu, para travar o botão e dar feedback
+     mesmo se a página for recarregada.
+   ========================================================================== */
+
+const LETRAS = ["A", "B", "C", "D"];
+const $ = (id) => document.getElementById(id);
+
+/* ---- Identidade persistente ---- */
+function gerarId() { return "u_" + Math.random().toString(36).slice(2) + Date.now().toString(36); }
+let userId   = localStorage.getItem("quiz_userId") || (localStorage.setItem("quiz_userId", gerarId()), localStorage.getItem("quiz_userId"));
+let meuNome  = localStorage.getItem("quiz_nome") || "";
+
+/* ---- Espelho do estado remoto ---- */
+let estado = null;
+
+$("nomeQuiz").textContent = NOME_DO_QUIZ;
+
+/* QR da própria página (na tela de entrada) */
+(function () {
+  try {
+    new QRCode($("qrAluno"), {
+      text: window.location.href, width: 132, height: 132,
+      colorDark: "#10131c", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch (e) { console.warn("QR indisponível:", e); }
+})();
+
+/* Se já tem nome salvo, entra direto. */
+if (meuNome) { $("inputNome").value = meuNome; }
+
+/* ---------------------------------------------------------------------------
+   Entrada
+--------------------------------------------------------------------------- */
+$("btnEntrar").onclick = entrar;
+$("inputNome").addEventListener("keydown", (e) => { if (e.key === "Enter") entrar(); });
+
+function entrar() {
+  const nome = $("inputNome").value.trim();
+  if (!nome) { $("inputNome").focus(); return; }
+  meuNome = nome;
+  localStorage.setItem("quiz_nome", nome);
+
+  $("telaEntrada").classList.add("esconder");
+  $("telaQuiz").classList.remove("esconder");
+  $("cabEu").classList.remove("esconder");
+  $("meuNome").textContent = nome;
+
+  registrarPresenca();
+  RTDB.onValue("quiz/estado", (val) => { estado = val; render(); });
+}
+
+/* ---------------------------------------------------------------------------
+   Presença: grava timestamp e o renova a cada 15s; some ao desconectar.
+--------------------------------------------------------------------------- */
+function registrarPresenca() {
+  const caminho = "quiz/presenca/" + userId;
+  const bater = () => RTDB.set(caminho, Date.now());
+  bater();
+  RTDB.onDisconnectRemove(caminho);
+  setInterval(bater, 15000);
+  window.addEventListener("beforeunload", () => { try { RTDB.remove(caminho); } catch (e) {} });
+}
+
+/* ---------------------------------------------------------------------------
+   Voto
+--------------------------------------------------------------------------- */
+function chaveVotoLocal(idx) { return "quiz_voto_q" + idx; }
+function meuVoto(idx)        { return localStorage.getItem(chaveVotoLocal(idx)); }
+
+function votar(idx, letra) {
+  if (!estado || !estado.votacaoAberta) return;     // votação fechada
+  if (meuVoto(idx)) return;                          // já votou nesta pergunta
+  localStorage.setItem(chaveVotoLocal(idx), letra);  // trava local imediato
+  // Incremento atômico do contador no RTDB:
+  RTDB.transaction("quiz/votos/" + idx + "/" + letra, (atual) => (atual || 0) + 1);
+  render();
+}
+
+/* ---------------------------------------------------------------------------
+   Render
+--------------------------------------------------------------------------- */
+function render() {
+  if (!estado) return;
+  const idx = estado.perguntaAtual || 0;
+  const q = PERGUNTAS[idx];
+  const revelada = !!estado.respostaRevelada;
+  const aberta   = !!estado.votacaoAberta;
+  const escolha  = meuVoto(idx);
+
+  /* Cabeçalho / status */
+  $("statusRotulo").textContent = `Pergunta ${idx + 1} de ${PERGUNTAS.length}`;
+  $("qRotulo").textContent = aberta ? "Vote agora" : (revelada ? "Resultado" : "Pergunta");
+  $("qTexto").textContent = q.pergunta;
+
+  const t = (typeof estado.tempoRestante === "number") ? estado.tempoRestante : "—";
+  const elT = $("statusTempo");
+  elT.textContent = aberta ? `${t}s` : (revelada ? "encerrada" : "aguarde");
+  elT.classList.toggle("baixo", aberta && typeof t === "number" && t <= 5);
+
+  /* Botões de voto */
+  $("botoes").innerHTML = LETRAS.map((l) => {
+    let classe = "voto op-" + l;
+    const ehEscolha = escolha === l;
+    const ehCerta = l === q.correta;
+
+    if (revelada) {
+      if (ehCerta) classe += " certa";
+      else if (ehEscolha) classe += " errada-escolhida";
+      else classe += " travado";
+    } else if (escolha) {
+      classe += " travado" + (ehEscolha ? " escolhido" : "");
+    } else if (!aberta) {
+      classe += " travado";
+    }
+
+    const trava = (revelada || escolha || !aberta) ? "disabled" : "";
+    const check = ehEscolha ? "✓" : (revelada && ehCerta ? "✓" : "");
+    return `
+      <button class="${classe}" data-letra="${l}" ${trava}>
+        <span class="letra">${l}</span>
+        <span class="rotulo-op">${q.opcoes[l]}</span>
+        <span class="check">${check}</span>
+      </button>`;
+  }).join("");
+
+  /* Liga os cliques (apenas se votação aberta e ainda não votou) */
+  if (aberta && !escolha && !revelada) {
+    $("botoes").querySelectorAll(".voto").forEach((b) => {
+      b.onclick = () => votar(idx, b.dataset.letra);
+    });
+  }
+
+  /* Caixa de feedback / mensagens */
+  const fb = $("feedback");
+  fb.className = "feedback"; // reset
+  if (revelada) {
+    if (escolha && escolha === q.correta) {
+      fb.classList.add("acerto");
+      fb.innerHTML = `<div class="icone">✓</div><div class="titulo">Você acertou!</div><div class="desc">Resposta correta: ${escolha}</div>`;
+    } else if (escolha) {
+      fb.classList.add("erro");
+      fb.innerHTML = `<div class="icone">✗</div><div class="titulo">Você errou</div><div class="desc">A resposta certa era a opção ${q.correta}</div>`;
+    } else {
+      fb.classList.add("neutro");
+      fb.innerHTML = `<div class="icone">—</div><div class="titulo">Você não votou</div><div class="desc">A resposta certa era a opção ${q.correta}</div>`;
+    }
+    fb.classList.remove("esconder");
+  } else if (escolha && aberta) {
+    fb.classList.add("neutro");
+    fb.innerHTML = `<div class="icone">⏳</div><div class="titulo">Voto registrado!</div><div class="desc">Aguarde o encerramento da votação…</div>`;
+    fb.classList.remove("esconder");
+  } else if (!aberta && !revelada) {
+    fb.classList.add("neutro", "aguardando");
+    fb.innerHTML = `<div class="icone">⏳</div><div class="titulo">Aguardando próxima pergunta…</div><div class="desc">A votação ainda não foi aberta pelo apresentador.</div>`;
+    fb.classList.remove("esconder");
+  } else {
+    fb.classList.add("esconder");
+  }
+}
+
+/* Se o aluno já tinha entrado antes (nome salvo), pula a tela de entrada. */
+if (meuNome) { entrar(); }
+</script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+/* ============================================================================
+   STYLES.CSS  —  Sistema visual compartilhado (apresentador + aluno)
+   ----------------------------------------------------------------------------
+   Estética "game-show" ORIGINAL: fundo azul-noite profundo, destaques em
+   dourado/âmbar, e as quatro opções A/B/C/D em cores próprias.
+   ========================================================================== */
+
+:root {
+  /* Fundo / superfícies */
+  --bg-0:      oklch(0.15 0.035 264);   /* azul-noite mais escuro */
+  --bg-1:      oklch(0.20 0.045 263);   /* painel */
+  --bg-2:      oklch(0.26 0.050 262);   /* painel elevado */
+  --linha:     oklch(0.40 0.05 262 / 0.55);
+
+  /* Texto */
+  --tx:        oklch(0.97 0.012 250);
+  --tx-suave:  oklch(0.80 0.03 255);
+  --tx-fraco:  oklch(0.62 0.03 258);
+
+  /* Dourado / destaque */
+  --ouro:      oklch(0.83 0.135 85);
+  --ouro-claro:oklch(0.92 0.09 90);
+  --ouro-escuro:oklch(0.66 0.13 75);
+
+  /* Cores das opções (base + brilho) */
+  --A:  oklch(0.62 0.16 252);  --A-glow: oklch(0.62 0.16 252 / 0.45);
+  --B:  oklch(0.66 0.15 152);  --B-glow: oklch(0.66 0.15 152 / 0.45);
+  --C:  oklch(0.70 0.16 56);   --C-glow: oklch(0.70 0.16 56 / 0.45);
+  --D:  oklch(0.60 0.18 305);  --D-glow: oklch(0.60 0.18 305 / 0.45);
+
+  /* Semânticas */
+  --certo:   oklch(0.72 0.18 150);
+  --errado:  oklch(0.63 0.20 25);
+
+  --raio:    18px;
+  --raio-sm: 12px;
+
+  --fonte-display: "Sora", system-ui, sans-serif;
+  --fonte-texto:   "Manrope", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--fonte-texto);
+  color: var(--tx);
+  background:
+    radial-gradient(1200px 800px at 50% -10%, oklch(0.30 0.07 262) 0%, transparent 60%),
+    radial-gradient(900px 700px at 100% 110%, oklch(0.24 0.08 300 / 0.6) 0%, transparent 55%),
+    linear-gradient(180deg, var(--bg-0), oklch(0.11 0.03 266));
+  background-attachment: fixed;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: var(--fonte-display); font-weight: 700; margin: 0; }
+
+/* Marca/título do quiz */
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--fonte-display);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.marca .losango {
+  width: 16px; height: 16px;
+  background: linear-gradient(135deg, var(--ouro-claro), var(--ouro-escuro));
+  transform: rotate(45deg);
+  box-shadow: 0 0 18px var(--ouro-glow, oklch(0.83 0.135 85 / 0.6));
+}
+.marca .nome {
+  background: linear-gradient(180deg, var(--ouro-claro), var(--ouro));
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+
+/* Chips / pílulas */
+.chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--bg-2);
+  border: 1px solid var(--linha);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--tx-suave);
+}
+.chip .ponto {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--certo);
+  box-shadow: 0 0 0 3px oklch(0.72 0.18 150 / 0.25);
+}
+.chip .ponto.off { background: var(--tx-fraco); box-shadow: none; }
+
+/* Cartões */
+.cartao {
+  background: linear-gradient(180deg, var(--bg-1), oklch(0.17 0.04 264));
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  box-shadow: 0 20px 50px -28px oklch(0 0 0 / 0.8), inset 0 1px 0 oklch(1 0 0 / 0.04);
+}
+
+/* Botões de controle (apresentador) */
+.btn {
+  font-family: var(--fonte-display);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 0.01em;
+  border: 1px solid var(--linha);
+  background: var(--bg-2);
+  color: var(--tx);
+  padding: 16px 22px;
+  border-radius: var(--raio-sm);
+  cursor: pointer;
+  transition: transform .12s ease, filter .15s ease, background .15s ease, opacity .15s ease;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+}
+.btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: .4; cursor: not-allowed; transform: none; filter: none; }
+
+.btn-ouro {
+  background: linear-gradient(180deg, var(--ouro-claro), var(--ouro-escuro));
+  color: oklch(0.22 0.05 70);
+  border-color: oklch(0.7 0.13 80);
+  box-shadow: 0 10px 28px -10px oklch(0.83 0.135 85 / 0.6);
+}
+.btn-verde { background: linear-gradient(180deg, oklch(0.72 0.17 150), oklch(0.55 0.16 150)); color: #04140c; border-color: oklch(0.6 0.16 150); }
+.btn-fantasma { background: transparent; }
+
+/* Badge da letra da opção */
+.letra {
+  flex: none;
+  display: grid; place-items: center;
+  font-family: var(--fonte-display);
+  font-weight: 800;
+  color: var(--tx);
+  background: var(--op-cor, var(--bg-2));
+  box-shadow: 0 0 24px -6px var(--op-glow, transparent), inset 0 1px 0 oklch(1 0 0 / 0.25);
+}
+
+/* Mapeia classes de opção -> variáveis de cor */
+.op-A { --op-cor: var(--A); --op-glow: var(--A-glow); }
+.op-B { --op-cor: var(--B); --op-glow: var(--B-glow); }
+.op-C { --op-cor: var(--C); --op-glow: var(--C-glow); }
+.op-D { --op-cor: var(--D); --op-glow: var(--D-glow); }
+
+/* utilidades */
+.esconder { display: none !important; }
+.mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+@keyframes surgir { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes pulso  { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+@keyframes brilho-ouro {
+  0%,100% { box-shadow: 0 0 0 0 oklch(0.83 0.135 85 / 0.0); }
+  50%     { box-shadow: 0 0 30px 4px oklch(0.83 0.135 85 / 0.35); }
+}

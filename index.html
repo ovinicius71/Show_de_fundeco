@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz ao vivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .home { max-width: 760px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; gap: 30px; padding: 40px 22px; }
+  .home .marca { font-size: 22px; }
+  .home h1 { font-family: var(--fonte-display); font-size: clamp(30px, 6vw, 50px); line-height: 1.08; text-wrap: balance; }
+  .home p { color: var(--tx-suave); font-size: 17px; line-height: 1.5; max-width: 56ch; }
+  .acessos { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .acesso { padding: 26px; text-decoration: none; color: var(--tx); display: grid; gap: 8px; transition: transform .14s ease, border-color .2s ease; }
+  .acesso:hover { transform: translateY(-3px); border-color: var(--ouro); }
+  .acesso .tag { font-family: var(--fonte-display); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; font-size: 12px; color: var(--ouro); }
+  .acesso .t { font-family: var(--fonte-display); font-weight: 700; font-size: 22px; }
+  .acesso .d { color: var(--tx-suave); font-size: 14px; line-height: 1.4; }
+  @media (max-width: 560px) { .acessos { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="home">
+  <div class="marca"><span class="losango"></span><span class="nome">QUIZ AO VIVO</span></div>
+  <div>
+    <h1>Quiz interativo em tempo real para a sala de aula</h1>
+    <p>O apresentador conduz pelo projetor; os alunos votam pelo celular. Os resultados aparecem na hora.</p>
+  </div>
+  <div class="acessos">
+    <a class="acesso cartao" href="apresentador.html">
+      <span class="tag">No projetor</span>
+      <span class="t">Apresentador ›</span>
+      <span class="d">Controle as perguntas, o tempo e veja os votos ao vivo.</span>
+    </a>
+    <a class="acesso cartao" href="aluno.html">
+      <span class="tag">No celular</span>
+      <span class="t">Aluno ›</span>
+      <span class="d">Entre com seu nome e vote em A, B, C ou D.</span>
+    </a>
+  </div>
+</div>
+</body>
+</html>

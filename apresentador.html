@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apresentador · Quiz ao vivo</title>
+
+<!-- Fontes -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Firebase (SDK v8 compat) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<!-- Gerador de QR Code -->
+<script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+
+<link rel="stylesheet" href="styles.css">
+<style>
+  .tela {
+    max-width: 1480px; margin: 0 auto;
+    padding: 26px clamp(16px, 3vw, 44px);
+    min-height: 100vh; display: flex; flex-direction: column; gap: 22px;
+  }
+
+  /* Cabeçalho */
+  .topo { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .topo .marca { font-size: clamp(18px, 2vw, 24px); }
+  .topo-dir { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  .aviso-demo {
+    width: 100%;
+    background: oklch(0.70 0.16 56 / 0.14);
+    border: 1px solid oklch(0.70 0.16 56 / 0.5);
+    color: var(--ouro-claro);
+    border-radius: var(--raio-sm);
+    padding: 10px 16px; font-size: 13.5px; font-weight: 600;
+  }
+  .aviso-demo b { color: var(--ouro); }
+
+  /* Corpo: palco + lateral */
+  .corpo { display: grid; grid-template-columns: 1fr 350px; gap: 22px; align-items: start; }
+
+  .palco { padding: clamp(20px, 2.4vw, 34px); }
+  .pergunta-rotulo {
+    font-family: var(--fonte-display); font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ouro); font-size: 13px; margin-bottom: 12px;
+  }
+  .pergunta-texto {
+    font-family: var(--fonte-display); font-weight: 700;
+    font-size: clamp(24px, 2.7vw, 38px); line-height: 1.18;
+    text-wrap: balance; margin-bottom: 26px;
+  }
+
+  .opcoes { display: grid; gap: 14px; }
+  .opcao {
+    position: relative; overflow: hidden;
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px;
+    padding: 14px 20px 14px 14px;
+    min-height: 84px;
+    border-radius: var(--raio);
+    background: var(--bg-2);
+    border: 1px solid var(--linha);
+    transition: opacity .35s ease, filter .35s ease, box-shadow .35s ease, border-color .35s ease;
+  }
+  .opcao .barra-fill {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
+    background: linear-gradient(90deg, var(--op-cor) , oklch(from var(--op-cor) l c h / 0.35));
+    opacity: 0.30; border-right: 3px solid var(--op-cor);
+    transition: width .85s cubic-bezier(.22,.61,.36,1), background .35s ease, opacity .35s ease;
+    z-index: 0;
+  }
+  .opcao .letra { position: relative; z-index: 1; width: 58px; height: 58px; border-radius: 14px; font-size: 26px; }
+  .opcao .op-texto { position: relative; z-index: 1; font-size: clamp(16px, 1.5vw, 21px); font-weight: 600; line-height: 1.25; }
+  .opcao .op-num { position: relative; z-index: 1; text-align: right; font-family: var(--fonte-display); }
+  .opcao .op-num b { display: block; font-size: 30px; font-weight: 800; line-height: 1; }
+  .opcao .op-num span { font-size: 13px; color: var(--tx-suave); font-weight: 600; }
+
+  /* Estados de revelação */
+  .opcao.correta {
+    border-color: var(--certo);
+    box-shadow: 0 0 0 2px var(--certo), 0 0 36px -6px oklch(0.72 0.18 150 / 0.7);
+    animation: brilho-ouro 1.6s ease infinite;
+  }
+  .opcao.correta .barra-fill { background: var(--certo); opacity: 0.32; border-right-color: var(--certo); }
+  .opcao.correta .letra { background: var(--certo); }
+  .opcao.apagada { opacity: 0.34; filter: grayscale(0.45); }
+  .opcao .marca-certa {
+    position: relative; z-index: 1; display: none;
+    color: var(--certo); font-weight: 800; font-family: var(--fonte-display); font-size: 15px;
+    white-space: nowrap;
+  }
+  .opcao.correta .marca-certa { display: inline; }
+  .opcao.correta .op-num { display: none; }
+
+  /* Lateral */
+  .lateral { display: grid; gap: 18px; }
+  .bloco { padding: 20px; }
+  .bloco h3 {
+    font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--tx-fraco); margin-bottom: 14px; font-weight: 700;
+  }
+
+  .timer-wrap { display: grid; place-items: center; gap: 6px; }
+  .timer-ring {
+    position: relative; width: 188px; height: 188px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: conic-gradient(var(--cor-timer, var(--ouro)) calc(var(--frac, 1) * 360deg), oklch(0.30 0.04 262) 0deg);
+    transition: background .9s linear;
+  }
+  .timer-disc {
+    width: 150px; height: 150px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 35%, var(--bg-2), var(--bg-1));
+    display: grid; place-items: center; gap: 2px;
+    box-shadow: inset 0 2px 10px oklch(0 0 0 / 0.4);
+  }
+  .timer-num { font-family: var(--fonte-display); font-weight: 800; font-size: 56px; line-height: 1; }
+  .timer-lbl { font-size: 12px; color: var(--tx-fraco); letter-spacing: 0.12em; text-transform: uppercase; }
+  .timer-ring.baixo .timer-num { color: var(--errado); }
+
+  /* Placar */
+  .placar-num { font-family: var(--fonte-display); font-weight: 800; font-size: 46px; line-height: 1; }
+  .placar-num span { color: var(--tx-fraco); font-size: 26px; }
+  .placar-sub { color: var(--tx-suave); font-size: 14px; margin-top: 4px; }
+  .placar-pts { display: flex; gap: 7px; margin-top: 14px; flex-wrap: wrap; }
+  .pt { width: 16px; height: 16px; border-radius: 5px; background: var(--bg-2); border: 1px solid var(--linha); }
+  .pt.ok { background: var(--certo); border-color: var(--certo); }
+  .pt.no { background: var(--errado); border-color: var(--errado); opacity: .8; }
+
+  /* Entrada / QR */
+  .entrada-qr { display: grid; place-items: center; }
+  #qrApresentador { background: #fff; padding: 10px; border-radius: 12px; line-height: 0; }
+  #qrApresentador img, #qrApresentador canvas { display: block; }
+  .entrada-url {
+    margin-top: 12px; font-size: 12.5px; color: var(--tx-suave);
+    word-break: break-all; text-align: center;
+  }
+  .entrada-url b { color: var(--ouro-claro); }
+
+  /* Controles */
+  .controles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+  @media (max-width: 1080px) {
+    .corpo { grid-template-columns: 1fr; }
+    .lateral { grid-template-columns: 1fr 1fr; }
+    .controles { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 620px) {
+    .lateral { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+
+<body>
+<div class="tela">
+
+  <!-- Cabeçalho -->
+  <header class="topo">
+    <div class="marca">
+      <span class="losango"></span>
+      <span class="nome" id="nomeQuiz">QUIZ</span>
+    </div>
+    <div class="topo-dir">
+      <span class="chip"><span class="ponto" id="pontoConn"></span><span id="conectados">0 conectados</span></span>
+      <span class="chip" id="chipModo">modo —</span>
+    </div>
+    <div class="aviso-demo esconder" id="avisoDemo">
+      ⚠ <b>Modo demonstração</b> — Firebase ainda não configurado. A sincronização funciona só entre abas deste navegador. Veja o <b>README.md</b> para ativar o uso em sala (celulares).
+    </div>
+  </header>
+
+  <!-- Corpo -->
+  <div class="corpo">
+
+    <!-- Palco principal -->
+    <section class="palco cartao">
+      <div class="pergunta-rotulo" id="rotuloPergunta">Pergunta 1 de 3</div>
+      <h1 class="pergunta-texto" id="textoPergunta">Carregando…</h1>
+      <div class="opcoes" id="opcoes"><!-- preenchido via JS --></div>
+    </section>
+
+    <!-- Lateral -->
+    <aside class="lateral">
+      <div class="bloco cartao">
+        <h3>Tempo</h3>
+        <div class="timer-wrap">
+          <div class="timer-ring" id="timerRing" style="--frac:1;">
+            <div class="timer-disc">
+              <div class="timer-num" id="timerNum">30</div>
+              <div class="timer-lbl">segundos</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bloco cartao">
+        <h3>Placar da turma</h3>
+        <div class="placar-num"><span id="placarAcertos">0</span><span> / </span><span id="placarTotal">0</span></div>
+        <div class="placar-sub" id="placarSub">perguntas em que a maioria acertou</div>
+        <div class="placar-pts" id="placarPts"></div>
+      </div>
+
+      <div class="bloco cartao">
+        <h3>Entrar pelo celular</h3>
+        <div class="entrada-qr">
+          <div id="qrApresentador"></div>
+          <div class="entrada-url">Acesse: <b id="urlAluno">aluno.html</b></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Controles -->
+  <footer class="controles">
+    <button class="btn btn-ouro" id="btnVotacao">Iniciar votação</button>
+    <button class="btn btn-verde" id="btnRevelar">Revelar resposta</button>
+    <button class="btn" id="btnProxima">Próxima pergunta ›</button>
+    <button class="btn btn-fantasma" id="btnReiniciar">↺ Reiniciar quiz</button>
+  </footer>
+</div>
+
+<script src="config.js"></script>
+<script src="db.js"></script>
+<script>
+/* ============================================================================
+   CONTROLADOR DO APRESENTADOR
+   ----------------------------------------------------------------------------
+   - Lê/escreve o estado do quiz no RTDB (Firebase ou modo local).
+   - É a ÚNICA tela que controla o temporizador e os botões.
+   ========================================================================== */
+
+const LETRAS = ["A", "B", "C", "D"];
+
+/* Espelhos locais do estado remoto (atualizados pelos listeners) */
+let estado      = null;   // { perguntaAtual, votacaoAberta, respostaRevelada, tempoRestante }
+let votos       = null;   // { A,B,C,D } da pergunta atual
+let presenca    = null;   // { userId: timestamp }
+let resultados  = null;   // { idx: bool }
+
+let pararVotos  = null;   // função p/ cancelar o listener de votos da pergunta atual
+let idxOuvido   = -1;     // qual índice de votos está sendo ouvido
+let tickId      = null;   // setInterval do temporizador
+
+/* --- Atalhos de DOM --- */
+const $ = (id) => document.getElementById(id);
+
+/* ---------------------------------------------------------------------------
+   Inicialização
+--------------------------------------------------------------------------- */
+$("nomeQuiz").textContent = NOME_DO_QUIZ;
+$("chipModo").textContent = "modo: " + RTDB.modo;
+if (RTDB.modo === "local") $("avisoDemo").classList.remove("esconder");
+
+/* QR + URL de entrada do aluno (caminho absoluto, funciona no GitHub Pages) */
+(function montarEntrada() {
+  const urlAluno = new URL("aluno.html", window.location.href).href;
+  $("urlAluno").textContent = urlAluno.replace(/^https?:\/\//, "");
+  try {
+    new QRCode($("qrApresentador"), {
+      text: urlAluno, width: 150, height: 150,
+      colorDark: "#10131c", colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch (e) { console.warn("QR indisponível:", e); }
+})();
+
+/* Garante que o estado exista no banco (primeira execução). */
+async function garantirEstadoInicial() {
+  const atual = await RTDB.get("quiz/estado");
+  if (!atual) {
+    await RTDB.set("quiz/estado", {
+      perguntaAtual: 0, votacaoAberta: false,
+      respostaRevelada: false, tempoRestante: TEMPO_PADRAO
+    });
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Listeners (tempo real)
+--------------------------------------------------------------------------- */
+function assinarTudo() {
+  RTDB.onValue("quiz/estado", (val) => {
+    estado = val || { perguntaAtual: 0, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO };
+    sincronizarListenerDeVotos();
+    // Se recarregou a página com votação aberta, retoma o tique-taque.
+    if (estado.votacaoAberta && !tickId) iniciarTick();
+    if (!estado.votacaoAberta && tickId) pararTick();
+    render();
+  });
+
+  RTDB.onValue("quiz/presenca", (val) => { presenca = val || {}; render(); });
+  RTDB.onValue("quiz/resultados", (val) => { resultados = val || {}; render(); });
+}
+
+/* Troca o listener de votos quando a pergunta muda. */
+function sincronizarListenerDeVotos() {
+  const idx = estado.perguntaAtual || 0;
+  if (idx === idxOuvido) return;
+  if (pararVotos) pararVotos();
+  idxOuvido = idx;
+  pararVotos = RTDB.onValue("quiz/votos/" + idx, (val) => { votos = val || {}; render(); });
+}
+
+/* ---------------------------------------------------------------------------
+   Temporizador (somente o apresentador escreve tempoRestante)
+--------------------------------------------------------------------------- */
+function iniciarTick() {
+  pararTick();
+  tickId = setInterval(() => {
+    const t = (estado && typeof estado.tempoRestante === "number") ? estado.tempoRestante : 0;
+    const novo = t - 1;
+    if (novo <= 0) {
+      RTDB.update("quiz/estado", { tempoRestante: 0, votacaoAberta: false });
+      pararTick();
+    } else {
+      RTDB.update("quiz/estado", { tempoRestante: novo });
+    }
+  }, 1000);
+}
+function pararTick() { if (tickId) { clearInterval(tickId); tickId = null; } }
+
+/* ---------------------------------------------------------------------------
+   Ações dos botões
+--------------------------------------------------------------------------- */
+function abrirOuRetomarVotacao() {
+  let t = estado.tempoRestante;
+  if (!t || t <= 0) t = TEMPO_PADRAO;                 // recomeça do zero se zerou
+  RTDB.update("quiz/estado", { votacaoAberta: true, respostaRevelada: false, tempoRestante: t });
+  iniciarTick();
+}
+function pausarVotacao() {
+  pararTick();
+  RTDB.update("quiz/estado", { votacaoAberta: false });
+}
+function revelarResposta() {
+  pararTick();
+  const idx = estado.perguntaAtual || 0;
+  const maioria = opcaoMaisVotada(votos);
+  const acertou = !!maioria && maioria === PERGUNTAS[idx].correta;
+  RTDB.update("quiz/estado", { respostaRevelada: true, votacaoAberta: false });
+  RTDB.set("quiz/resultados/" + idx, acertou);
+}
+function proximaPergunta() {
+  const idx = Math.min((estado.perguntaAtual || 0) + 1, PERGUNTAS.length - 1);
+  pararTick();
+  RTDB.update("quiz/estado", {
+    perguntaAtual: idx, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO
+  });
+}
+function reiniciarQuiz() {
+  if (!confirm("Reiniciar o quiz? Isso volta para a pergunta 1 e apaga todos os votos.")) return;
+  pararTick();
+  RTDB.remove("quiz/votos");
+  RTDB.remove("quiz/resultados");
+  RTDB.update("quiz/estado", {
+    perguntaAtual: 0, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO
+  });
+}
+
+$("btnVotacao").onclick   = () => (estado && estado.votacaoAberta) ? pausarVotacao() : abrirOuRetomarVotacao();
+$("btnRevelar").onclick   = revelarResposta;
+$("btnProxima").onclick   = proximaPergunta;
+$("btnReiniciar").onclick = reiniciarQuiz;
+
+/* ---------------------------------------------------------------------------
+   Helpers de contagem
+--------------------------------------------------------------------------- */
+function contagem(v, l) { return (v && typeof v[l] === "number") ? v[l] : 0; }
+function totalVotos(v)  { return LETRAS.reduce((s, l) => s + contagem(v, l), 0); }
+function opcaoMaisVotada(v) {
+  const total = totalVotos(v);
+  if (total === 0) return null;
+  let melhor = null, max = -1;
+  LETRAS.forEach((l) => { const c = contagem(v, l); if (c > max) { max = c; melhor = l; } });
+  return melhor;
+}
+
+/* ---------------------------------------------------------------------------
+   Render
+--------------------------------------------------------------------------- */
+function render() {
+  if (!estado) return;
+  const idx = estado.perguntaAtual || 0;
+  const q = PERGUNTAS[idx];
+  const revelada = !!estado.respostaRevelada;
+
+  /* Cabeçalho da pergunta */
+  $("rotuloPergunta").textContent = `Pergunta ${idx + 1} de ${PERGUNTAS.length}`;
+  $("textoPergunta").textContent = q.pergunta;
+
+  /* Opções + barras */
+  const total = totalVotos(votos);
+  $("opcoes").innerHTML = LETRAS.map((l) => {
+    const c = contagem(votos, l);
+    const pct = total ? Math.round((c / total) * 100) : 0;
+    const ehCerta = l === q.correta;
+    let classe = "opcao op-" + l;
+    if (revelada && ehCerta) classe += " correta";
+    if (revelada && !ehCerta) classe += " apagada";
+    return `
+      <div class="${classe}">
+        <div class="barra-fill" style="width:${total ? pct : 0}%"></div>
+        <div class="letra">${l}</div>
+        <div class="op-texto">${q.opcoes[l]}</div>
+        <div class="op-num"><b>${c}</b><span>${pct}%</span></div>
+        <div class="marca-certa">✓ Resposta certa</div>
+      </div>`;
+  }).join("");
+
+  /* Temporizador */
+  const t = (typeof estado.tempoRestante === "number") ? estado.tempoRestante : TEMPO_PADRAO;
+  $("timerNum").textContent = t;
+  const ring = $("timerRing");
+  const frac = Math.max(0, Math.min(1, t / TEMPO_PADRAO));
+  ring.style.setProperty("--frac", frac);
+  const baixo = t <= 5;
+  ring.style.setProperty("--cor-timer", baixo ? "var(--errado)" : "var(--ouro)");
+  ring.classList.toggle("baixo", baixo);
+
+  /* Conectados (presença "fresca": últimos 35s) */
+  const agora = Date.now();
+  const conn = presenca ? Object.values(presenca).filter((ts) => agora - ts < 35000).length : 0;
+  $("conectados").textContent = conn + (conn === 1 ? " conectado" : " conectados");
+  $("pontoConn").classList.toggle("off", conn === 0);
+
+  /* Placar da turma */
+  const res = resultados || {};
+  const chaves = Object.keys(res);
+  const acertos = chaves.filter((k) => res[k] === true).length;
+  $("placarAcertos").textContent = acertos;
+  $("placarTotal").textContent = chaves.length;
+  $("placarPts").innerHTML = PERGUNTAS.map((_, i) => {
+    if (res[i] === true) return `<div class="pt ok" title="Pergunta ${i + 1}: acertou"></div>`;
+    if (res[i] === false) return `<div class="pt no" title="Pergunta ${i + 1}: errou"></div>`;
+    return `<div class="pt" title="Pergunta ${i + 1}: pendente"></div>`;
+  }).join("");
+
+  /* Estado dos botões */
+  const btnV = $("btnVotacao");
+  if (estado.votacaoAberta) {
+    btnV.textContent = "❚❚ Pausar votação";
+  } else if (t > 0 && t < TEMPO_PADRAO && !revelada) {
+    btnV.textContent = "▶ Retomar votação";
+  } else {
+    btnV.textContent = "▶ Iniciar votação";
+  }
+  $("btnRevelar").disabled = revelada;
+  $("btnProxima").disabled = idx >= PERGUNTAS.length - 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Boot
+--------------------------------------------------------------------------- */
+(async function () {
+  await garantirEstadoInicial();
+  assinarTudo();
+  // Atualiza a contagem de "conectados" periodicamente (descarta presenças velhas).
+  setInterval(render, 5000);
+})();
+</script>
+</body>
+</html>
