@@ -1,36 +1,35 @@
 /* ============================================================================
    STYLES.CSS  —  Sistema visual compartilhado (apresentador + aluno)
    ----------------------------------------------------------------------------
-   Estética "game-show" ORIGINAL: fundo azul-noite profundo, destaques em
-   dourado/âmbar, e as quatro opções A/B/C/D em cores próprias.
+   Estética "palco de auditório": holofote azul radial, raios de luz,
+   molduras douradas e botões com brilho metálico. Logo dourada do quiz.
    ========================================================================== */
 
 :root {
-  /* Fundo / superfícies */
-  --bg-0:      oklch(0.15 0.035 264);   /* azul-noite mais escuro */
-  --bg-1:      oklch(0.20 0.045 263);   /* painel */
-  --bg-2:      oklch(0.26 0.050 262);   /* painel elevado */
-  --linha:     oklch(0.40 0.05 262 / 0.55);
+  /* Azuis do palco */
+  --bg-0:      oklch(0.17 0.095 264);
+  --bg-1:      oklch(0.24 0.105 263);   /* painel */
+  --bg-2:      oklch(0.30 0.105 262);   /* painel elevado */
+  --linha:     oklch(0.58 0.10 258 / 0.55);
 
   /* Texto */
-  --tx:        oklch(0.97 0.012 250);
-  --tx-suave:  oklch(0.80 0.03 255);
-  --tx-fraco:  oklch(0.62 0.03 258);
+  --tx:        oklch(0.98 0.012 250);
+  --tx-suave:  oklch(0.84 0.04 255);
+  --tx-fraco:  oklch(0.68 0.05 258);
 
-  /* Dourado / destaque */
-  --ouro:      oklch(0.83 0.135 85);
-  --ouro-claro:oklch(0.92 0.09 90);
-  --ouro-escuro:oklch(0.66 0.13 75);
+  /* Dourado */
+  --ouro:       oklch(0.83 0.145 88);
+  --ouro-claro: oklch(0.93 0.10 92);
+  --ouro-escuro:oklch(0.64 0.14 72);
 
   /* Cores das opções (base + brilho) */
-  --A:  oklch(0.62 0.16 252);  --A-glow: oklch(0.62 0.16 252 / 0.45);
-  --B:  oklch(0.66 0.15 152);  --B-glow: oklch(0.66 0.15 152 / 0.45);
-  --C:  oklch(0.70 0.16 56);   --C-glow: oklch(0.70 0.16 56 / 0.45);
-  --D:  oklch(0.60 0.18 305);  --D-glow: oklch(0.60 0.18 305 / 0.45);
+  --A:  oklch(0.62 0.17 252);  --A-glow: oklch(0.62 0.17 252 / 0.55);
+  --B:  oklch(0.66 0.16 152);  --B-glow: oklch(0.66 0.16 152 / 0.55);
+  --C:  oklch(0.70 0.17 56);   --C-glow: oklch(0.70 0.17 56 / 0.55);
+  --D:  oklch(0.60 0.19 305);  --D-glow: oklch(0.60 0.19 305 / 0.55);
 
-  /* Semânticas */
-  --certo:   oklch(0.72 0.18 150);
-  --errado:  oklch(0.63 0.20 25);
+  --certo:   oklch(0.74 0.19 150);
+  --errado:  oklch(0.63 0.21 25);
 
   --raio:    18px;
   --raio-sm: 12px;
@@ -42,113 +41,119 @@
 * { box-sizing: border-box; }
 
 html, body {
-  margin: 0;
-  padding: 0;
+  margin: 0; padding: 0;
   font-family: var(--fonte-texto);
   color: var(--tx);
-  background:
-    radial-gradient(1200px 800px at 50% -10%, oklch(0.30 0.07 262) 0%, transparent 60%),
-    radial-gradient(900px 700px at 100% 110%, oklch(0.24 0.08 300 / 0.6) 0%, transparent 55%),
-    linear-gradient(180deg, var(--bg-0), oklch(0.11 0.03 266));
-  background-attachment: fixed;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  position: relative;
+}
+/* Fundo de palco: holofote central + raios + vinheta */
+body::before {
+  content: "";
+  position: fixed; inset: 0; z-index: -2;
+  background:
+    radial-gradient(125% 100% at 50% 2%, oklch(0.58 0.19 252) 0%, oklch(0.44 0.17 256) 22%, oklch(0.28 0.14 261) 48%, oklch(0.17 0.10 265) 78%, oklch(0.12 0.07 267) 100%);
+}
+body::after {
+  content: "";
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  /* raios sutis saindo do alto + anéis concêntricos */
+  background:
+    repeating-conic-gradient(from 0deg at 50% 2%,
+       oklch(1 0 0 / 0.06) 0deg, oklch(1 0 0 / 0.06) 2.4deg,
+       transparent 2.4deg, transparent 9deg),
+    repeating-radial-gradient(circle at 50% 4%,
+       transparent 0 78px, oklch(1 0 0 / 0.045) 78px 80px);
+  -webkit-mask-image: radial-gradient(120% 95% at 50% 2%, #000 0%, transparent 72%);
+          mask-image: radial-gradient(120% 95% at 50% 2%, #000 0%, transparent 72%);
 }
 
 h1, h2, h3 { font-family: var(--fonte-display); font-weight: 700; margin: 0; }
 
-/* Marca/título do quiz */
-.marca {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  font-family: var(--fonte-display);
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-.marca .losango {
-  width: 16px; height: 16px;
-  background: linear-gradient(135deg, var(--ouro-claro), var(--ouro-escuro));
-  transform: rotate(45deg);
-  box-shadow: 0 0 18px var(--ouro-glow, oklch(0.83 0.135 85 / 0.6));
-}
-.marca .nome {
-  background: linear-gradient(180deg, var(--ouro-claro), var(--ouro));
-  -webkit-background-clip: text; background-clip: text;
-  color: transparent;
-}
+/* Logo do quiz */
+.logo { display: block; height: 64px; width: auto; filter: drop-shadow(0 6px 14px oklch(0 0 0 / 0.5)); }
+.logo-sm { height: 40px; }
+.logo-lg { height: 120px; }
 
 /* Chips / pílulas */
 .chip {
   display: inline-flex; align-items: center; gap: 8px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: var(--bg-2);
+  padding: 8px 14px; border-radius: 999px;
+  background: oklch(0.22 0.09 263 / 0.85);
   border: 1px solid var(--linha);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--tx-suave);
+  font-weight: 600; font-size: 14px; color: var(--tx-suave);
 }
-.chip .ponto {
-  width: 9px; height: 9px; border-radius: 50%;
-  background: var(--certo);
-  box-shadow: 0 0 0 3px oklch(0.72 0.18 150 / 0.25);
-}
+.chip .ponto { width: 9px; height: 9px; border-radius: 50%; background: var(--certo); box-shadow: 0 0 0 3px oklch(0.74 0.19 150 / 0.25); }
 .chip .ponto.off { background: var(--tx-fraco); box-shadow: none; }
+.chip-ouro { color: var(--ouro-claro); border-color: oklch(0.7 0.12 82 / 0.7); background: oklch(0.45 0.1 80 / 0.18); }
 
 /* Cartões */
 .cartao {
-  background: linear-gradient(180deg, var(--bg-1), oklch(0.17 0.04 264));
+  background: linear-gradient(180deg, oklch(0.24 0.10 263 / 0.92), oklch(0.18 0.09 265 / 0.92));
   border: 1px solid var(--linha);
   border-radius: var(--raio);
-  box-shadow: 0 20px 50px -28px oklch(0 0 0 / 0.8), inset 0 1px 0 oklch(1 0 0 / 0.04);
+  box-shadow: 0 24px 60px -30px oklch(0 0 0 / 0.85), inset 0 1px 0 oklch(1 0 0 / 0.06);
+  backdrop-filter: blur(2px);
+}
+/* Moldura dourada (cartão de destaque, ex.: pergunta) */
+.moldura {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(180deg, oklch(0.24 0.10 263 / 0.95), oklch(0.17 0.09 265 / 0.95)) padding-box,
+    linear-gradient(180deg, var(--ouro-claro), var(--ouro-escuro)) border-box;
+  box-shadow: 0 24px 60px -30px oklch(0 0 0 / 0.85), 0 0 26px -10px oklch(0.83 0.145 88 / 0.4), inset 0 1px 0 oklch(1 0 0 / 0.08);
 }
 
-/* Botões de controle (apresentador) */
+/* Botões de controle */
 .btn {
-  font-family: var(--fonte-display);
-  font-weight: 700;
-  font-size: 17px;
-  letter-spacing: 0.01em;
-  border: 1px solid var(--linha);
-  background: var(--bg-2);
-  color: var(--tx);
-  padding: 16px 22px;
-  border-radius: var(--raio-sm);
-  cursor: pointer;
-  transition: transform .12s ease, filter .15s ease, background .15s ease, opacity .15s ease;
+  font-family: var(--fonte-display); font-weight: 700; font-size: 17px; letter-spacing: 0.01em;
+  border: 1px solid var(--linha); background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
+  color: var(--tx); padding: 16px 22px; border-radius: var(--raio-sm); cursor: pointer;
+  transition: transform .12s ease, filter .15s ease, opacity .15s ease;
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
 }
-.btn:hover { transform: translateY(-2px); filter: brightness(1.08); }
+.btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
 .btn:active { transform: translateY(0); }
 .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; filter: none; }
-
 .btn-ouro {
   background: linear-gradient(180deg, var(--ouro-claro), var(--ouro-escuro));
-  color: oklch(0.22 0.05 70);
-  border-color: oklch(0.7 0.13 80);
-  box-shadow: 0 10px 28px -10px oklch(0.83 0.135 85 / 0.6);
+  color: oklch(0.24 0.06 70); border-color: oklch(0.7 0.13 80);
+  box-shadow: 0 10px 28px -10px oklch(0.83 0.145 88 / 0.65), inset 0 1px 0 oklch(1 0 0 / 0.4);
+  text-shadow: 0 1px 0 oklch(1 0 0 / 0.3);
 }
-.btn-verde { background: linear-gradient(180deg, oklch(0.72 0.17 150), oklch(0.55 0.16 150)); color: #04140c; border-color: oklch(0.6 0.16 150); }
-.btn-fantasma { background: transparent; }
+.btn-verde { background: linear-gradient(180deg, oklch(0.74 0.18 150), oklch(0.56 0.16 150)); color: #04140c; border-color: oklch(0.62 0.16 150); }
+.btn-fantasma { background: oklch(0.22 0.08 263 / 0.6); }
 
-/* Badge da letra da opção */
+/* Badge da letra (com aro dourado) */
 .letra {
-  flex: none;
-  display: grid; place-items: center;
-  font-family: var(--fonte-display);
-  font-weight: 800;
-  color: var(--tx);
+  flex: none; display: grid; place-items: center;
+  font-family: var(--fonte-display); font-weight: 800; color: #fff;
   background: var(--op-cor, var(--bg-2));
-  box-shadow: 0 0 24px -6px var(--op-glow, transparent), inset 0 1px 0 oklch(1 0 0 / 0.25);
+  box-shadow: 0 0 0 2px var(--ouro), inset 0 2px 0 oklch(1 0 0 / 0.35), inset 0 -3px 6px oklch(0 0 0 / 0.3), 0 0 22px -6px var(--op-glow, transparent);
+  text-shadow: 0 2px 3px oklch(0 0 0 / 0.4);
 }
 
-/* Mapeia classes de opção -> variáveis de cor */
 .op-A { --op-cor: var(--A); --op-glow: var(--A-glow); }
 .op-B { --op-cor: var(--B); --op-glow: var(--B-glow); }
 .op-C { --op-cor: var(--C); --op-glow: var(--C-glow); }
 .op-D { --op-cor: var(--D); --op-glow: var(--D-glow); }
+
+/* ---- Ranking (compartilhado) ---- */
+.rank-lista { display: grid; gap: 8px; }
+.rank-item {
+  display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 11px;
+  background: oklch(0.27 0.09 263 / 0.7); border: 1px solid var(--linha);
+}
+.rank-item .pos { font-family: var(--fonte-display); font-weight: 800; font-size: 15px; color: var(--tx-fraco); text-align: center; }
+.rank-item .rnome { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-item .rpts { font-family: var(--fonte-display); font-weight: 800; font-size: 16px; color: var(--ouro-claro); }
+.rank-item.eu { border-color: var(--ouro); box-shadow: 0 0 0 1px var(--ouro); }
+.rank-item.top1 { background: linear-gradient(180deg, oklch(0.5 0.12 86 / 0.4), oklch(0.3 0.09 263 / 0.6)); border-color: oklch(0.75 0.13 85); }
+.rank-item.top1 .pos, .rank-item.top2 .pos, .rank-item.top3 .pos { color: var(--ouro); font-size: 17px; }
+.rank-item.top2 { background: oklch(0.4 0.02 250 / 0.45); }
+.rank-vazio { color: var(--tx-fraco); font-size: 13.5px; text-align: center; padding: 14px 0; }
 
 /* utilidades */
 .esconder { display: none !important; }
@@ -157,6 +162,6 @@ h1, h2, h3 { font-family: var(--fonte-display); font-weight: 700; margin: 0; }
 @keyframes surgir { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes pulso  { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
 @keyframes brilho-ouro {
-  0%,100% { box-shadow: 0 0 0 0 oklch(0.83 0.135 85 / 0.0); }
-  50%     { box-shadow: 0 0 30px 4px oklch(0.83 0.135 85 / 0.35); }
+  0%,100% { box-shadow: 0 0 0 2px var(--certo), 0 0 0 0 oklch(0.74 0.19 150 / 0.0); }
+  50%     { box-shadow: 0 0 0 2px var(--certo), 0 0 34px 4px oklch(0.74 0.19 150 / 0.5); }
 }

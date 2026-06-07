@@ -61,9 +61,15 @@
     padding: 14px 20px 14px 14px;
     min-height: 84px;
     border-radius: var(--raio);
-    background: var(--bg-2);
-    border: 1px solid var(--linha);
+    background: linear-gradient(180deg, oklch(0.31 0.10 262), oklch(0.21 0.09 264));
+    border: 1px solid oklch(0.58 0.10 256 / 0.7);
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.12), 0 10px 22px -16px #000;
     transition: opacity .35s ease, filter .35s ease, box-shadow .35s ease, border-color .35s ease;
+  }
+  .opcao::after {
+    content: ""; position: absolute; left: 0; right: 0; top: 0; height: 50%;
+    background: linear-gradient(180deg, oklch(1 0 0 / 0.10), transparent);
+    pointer-events: none; z-index: 1;
   }
   .opcao .barra-fill {
     position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
@@ -72,9 +78,9 @@
     transition: width .85s cubic-bezier(.22,.61,.36,1), background .35s ease, opacity .35s ease;
     z-index: 0;
   }
-  .opcao .letra { position: relative; z-index: 1; width: 58px; height: 58px; border-radius: 14px; font-size: 26px; }
-  .opcao .op-texto { position: relative; z-index: 1; font-size: clamp(16px, 1.5vw, 21px); font-weight: 600; line-height: 1.25; }
-  .opcao .op-num { position: relative; z-index: 1; text-align: right; font-family: var(--fonte-display); }
+  .opcao .letra { position: relative; z-index: 2; width: 58px; height: 58px; border-radius: 14px; font-size: 26px; }
+  .opcao .op-texto { position: relative; z-index: 2; font-size: clamp(16px, 1.5vw, 21px); font-weight: 600; line-height: 1.25; }
+  .opcao .op-num { position: relative; z-index: 2; text-align: right; font-family: var(--fonte-display); }
   .opcao .op-num b { display: block; font-size: 30px; font-weight: 800; line-height: 1; }
   .opcao .op-num span { font-size: 13px; color: var(--tx-suave); font-weight: 600; }
 
@@ -88,7 +94,7 @@
   .opcao.correta .letra { background: var(--certo); }
   .opcao.apagada { opacity: 0.34; filter: grayscale(0.45); }
   .opcao .marca-certa {
-    position: relative; z-index: 1; display: none;
+    position: relative; z-index: 2; display: none;
     color: var(--certo); font-weight: 800; font-family: var(--fonte-display); font-size: 15px;
     white-space: nowrap;
   }
@@ -158,10 +164,7 @@
 
   <!-- Cabeçalho -->
   <header class="topo">
-    <div class="marca">
-      <span class="losango"></span>
-      <span class="nome" id="nomeQuiz">QUIZ</span>
-    </div>
+    <img class="logo" src="assets/logo.png" alt="Show de Fundeco">
     <div class="topo-dir">
       <span class="chip"><span class="ponto" id="pontoConn"></span><span id="conectados">0 conectados</span></span>
       <span class="chip" id="chipModo">modo —</span>
@@ -175,7 +178,7 @@
   <div class="corpo">
 
     <!-- Palco principal -->
-    <section class="palco cartao">
+    <section class="palco cartao moldura">
       <div class="pergunta-rotulo" id="rotuloPergunta">Pergunta 1 de 3</div>
       <h1 class="pergunta-texto" id="textoPergunta">Carregando…</h1>
       <div class="opcoes" id="opcoes"><!-- preenchido via JS --></div>
@@ -193,6 +196,11 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <div class="bloco cartao">
+        <h3>Ranking dos alunos</h3>
+        <div class="rank-lista" id="ranking"><div class="rank-vazio">Ninguém pontuou ainda.</div></div>
       </div>
 
       <div class="bloco cartao">
@@ -238,6 +246,7 @@ let estado      = null;   // { perguntaAtual, votacaoAberta, respostaRevelada, t
 let votos       = null;   // { A,B,C,D } da pergunta atual
 let presenca    = null;   // { userId: timestamp }
 let resultados  = null;   // { idx: bool }
+let pontuacao   = null;   // { userId: { nome, pontos } }
 
 let pararVotos  = null;   // função p/ cancelar o listener de votos da pergunta atual
 let idxOuvido   = -1;     // qual índice de votos está sendo ouvido
@@ -249,7 +258,6 @@ const $ = (id) => document.getElementById(id);
 /* ---------------------------------------------------------------------------
    Inicialização
 --------------------------------------------------------------------------- */
-$("nomeQuiz").textContent = NOME_DO_QUIZ;
 $("chipModo").textContent = "modo: " + RTDB.modo;
 if (RTDB.modo === "local") $("avisoDemo").classList.remove("esconder");
 
@@ -292,6 +300,7 @@ function assinarTudo() {
 
   RTDB.onValue("quiz/presenca", (val) => { presenca = val || {}; render(); });
   RTDB.onValue("quiz/resultados", (val) => { resultados = val || {}; render(); });
+  RTDB.onValue("quiz/pontuacao", (val) => { pontuacao = val || {}; render(); });
 }
 
 /* Troca o listener de votos quando a pergunta muda. */
@@ -334,9 +343,20 @@ function pausarVotacao() {
   pararTick();
   RTDB.update("quiz/estado", { votacaoAberta: false });
 }
-function revelarResposta() {
+async function revelarResposta() {
   pararTick();
   const idx = estado.perguntaAtual || 0;
+  // Pontuação: só conta UMA vez por pergunta (se resultados/idx ainda não existe).
+  const jaContado = await RTDB.get("quiz/resultados/" + idx);
+  if (jaContado === null) {
+    const respostas = (await RTDB.get("quiz/respostas/" + idx)) || {};
+    const correta = PERGUNTAS[idx].correta;
+    Object.keys(respostas).forEach((uid) => {
+      if (respostas[uid] === correta) {
+        RTDB.transaction("quiz/pontuacao/" + uid + "/pontos", (p) => (p || 0) + 1);
+      }
+    });
+  }
   const maioria = opcaoMaisVotada(votos);
   const acertou = !!maioria && maioria === PERGUNTAS[idx].correta;
   RTDB.update("quiz/estado", { respostaRevelada: true, votacaoAberta: false });
@@ -350,10 +370,12 @@ function proximaPergunta() {
   });
 }
 function reiniciarQuiz() {
-  if (!confirm("Reiniciar o quiz? Isso volta para a pergunta 1 e apaga todos os votos.")) return;
+  if (!confirm("Reiniciar o quiz? Isso volta para a pergunta 1, apaga os votos e zera o ranking.")) return;
   pararTick();
   RTDB.remove("quiz/votos");
   RTDB.remove("quiz/resultados");
+  RTDB.remove("quiz/respostas");
+  RTDB.remove("quiz/pontuacao");
   RTDB.update("quiz/estado", {
     perguntaAtual: 0, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO
   });
@@ -437,6 +459,9 @@ function render() {
     return `<div class="pt" title="Pergunta ${i + 1}: pendente"></div>`;
   }).join("");
 
+  /* Ranking dos alunos (por pontos) */
+  renderRanking();
+
   /* Estado dos botões */
   const btnV = $("btnVotacao");
   if (estado.votacaoAberta) {
@@ -451,14 +476,36 @@ function render() {
 }
 
 /* ---------------------------------------------------------------------------
+   Ranking
+--------------------------------------------------------------------------- */
+function listaOrdenada(p) {
+  return Object.keys(p || {})
+    .map((uid) => ({ uid, nome: (p[uid] && p[uid].nome) || "Aluno", pontos: (p[uid] && p[uid].pontos) || 0 }))
+    .sort((a, b) => b.pontos - a.pontos || a.nome.localeCompare(b.nome));
+}
+function renderRanking() {
+  const arr = listaOrdenada(pontuacao).slice(0, 8);
+  const el = $("ranking");
+  if (arr.length === 0) {
+    el.innerHTML = `<div class="rank-vazio">Ninguém pontuou ainda.</div>`;
+    return;
+  }
+  el.innerHTML = arr.map((a, i) => {
+    const cls = i === 0 ? "top1" : i === 1 ? "top2" : i === 2 ? "top3" : "";
+    return `
+      <div class="rank-item ${cls}">
+        <div class="pos">${i + 1}º</div>
+        <div class="rnome">${a.nome}</div>
+        <div class="rpts">${a.pontos}</div>
+      </div>`;
+  }).join("");
+}
+
+/* ---------------------------------------------------------------------------
    Boot
 --------------------------------------------------------------------------- */
 (async function () {
-  try {
-    await garantirEstadoInicial();
-  } catch (e) {
-    console.warn("[Boot] garantirEstadoInicial falhou, continuando mesmo assim:", e);
-  }
+  await garantirEstadoInicial();
   assinarTudo();
   // Atualiza a contagem de "conectados" periodicamente (descarta presenças velhas).
   setInterval(render, 5000);

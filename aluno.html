@@ -28,6 +28,10 @@
   .cab .marca { font-size: 15px; }
   .cab .eu { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--tx-suave); }
   .cab .eu .ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--certo); box-shadow: 0 0 0 3px oklch(0.72 0.18 150 / 0.25); }
+  .meus-pts { font-family: var(--fonte-display); font-weight: 800; font-size: 13px; color: var(--ouro-claro); background: oklch(0.45 0.1 80 / 0.28); border: 1px solid oklch(0.7 0.12 82 / 0.6); padding: 3px 9px; border-radius: 999px; }
+  .entrada-logo { display: block; height: 92px; width: auto; margin: 2px auto 16px; }
+  .rank-cartao { padding: 16px; animation: surgir .35s ease; }
+  .rank-titulo { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--tx-fraco); margin-bottom: 12px; font-weight: 700; }
 
   /* ---------------- Tela de entrada ---------------- */
   .entrada { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
@@ -71,8 +75,9 @@
     position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px;
     width: 100%; text-align: left; cursor: pointer;
     padding: 14px; min-height: 64px;
-    border-radius: var(--raio); border: 2px solid var(--linha);
-    background: var(--bg-2); color: var(--tx);
+    border-radius: var(--raio); border: 1px solid oklch(0.58 0.10 256 / 0.7);
+    background: linear-gradient(180deg, oklch(0.31 0.10 262), oklch(0.21 0.09 264));
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.12); color: var(--tx);
     font-family: var(--fonte-texto); font-size: 16px; font-weight: 600; line-height: 1.25;
     transition: transform .12s ease, box-shadow .2s ease, opacity .25s ease, border-color .2s ease, background .2s ease;
   }
@@ -115,13 +120,17 @@
 <div class="app">
 
   <header class="cab">
-    <div class="marca"><span class="losango"></span><span class="nome" id="nomeQuiz">QUIZ</span></div>
-    <div class="eu esconder" id="cabEu"><span class="ponto"></span><span id="meuNome">—</span></div>
+    <img class="logo logo-sm" src="assets/logo.png" alt="Show de Fundeco">
+    <div class="eu esconder" id="cabEu">
+      <span class="ponto"></span><span id="meuNome">—</span>
+      <span class="meus-pts" id="meusPts">0 pts</span>
+    </div>
   </header>
 
   <!-- ====================== TELA DE ENTRADA ====================== -->
   <section class="entrada" id="telaEntrada">
-    <div class="cartao">
+    <div class="cartao moldura">
+      <img class="logo entrada-logo" src="assets/logo.png" alt="Show de Fundeco">
       <h1>Bem-vindo(a)!</h1>
       <p class="sub">Digite seu nome para participar do quiz ao vivo.</p>
       <input class="campo" id="inputNome" type="text" placeholder="Seu nome" maxlength="24" autocomplete="off">
@@ -141,7 +150,7 @@
       <span class="tempo" id="statusTempo">—</span>
     </div>
 
-    <div class="pergunta-cartao cartao">
+    <div class="pergunta-cartao cartao moldura">
       <div class="rotulo" id="qRotulo">Pergunta</div>
       <div class="texto" id="qTexto">…</div>
     </div>
@@ -149,6 +158,11 @@
     <div class="botoes" id="botoes"><!-- preenchido via JS --></div>
 
     <div class="feedback neutro esconder" id="feedback"></div>
+
+    <div class="rank-cartao cartao esconder" id="rankCartao">
+      <h3 class="rank-titulo">Ranking da turma</h3>
+      <div class="rank-lista" id="rankAluno"></div>
+    </div>
   </section>
 </div>
 
@@ -174,8 +188,9 @@ let meuNome  = localStorage.getItem("quiz_nome") || "";
 
 /* ---- Espelho do estado remoto ---- */
 let estado = null;
+let pontuacao = null;
 
-$("nomeQuiz").textContent = NOME_DO_QUIZ;
+$("nomeQuiz") && ($("nomeQuiz").textContent = NOME_DO_QUIZ);
 
 /* QR da própria página (na tela de entrada) */
 (function () {
@@ -209,6 +224,7 @@ function entrar() {
 
   registrarPresenca();
   RTDB.onValue("quiz/estado", (val) => { estado = val; render(); });
+  RTDB.onValue("quiz/pontuacao", (val) => { pontuacao = val || {}; render(); });
 }
 
 /* ---------------------------------------------------------------------------
@@ -235,6 +251,9 @@ function votar(idx, letra) {
   localStorage.setItem(chaveVotoLocal(idx), letra);  // trava local imediato
   // Incremento atômico do contador no RTDB:
   RTDB.transaction("quiz/votos/" + idx + "/" + letra, (atual) => (atual || 0) + 1);
+  // Registra a resposta deste aluno (para o ranking) e garante o nome no placar:
+  RTDB.set("quiz/respostas/" + idx + "/" + userId, letra);
+  RTDB.update("quiz/pontuacao/" + userId, { nome: meuNome });
   render();
 }
 
@@ -318,6 +337,29 @@ function render() {
   } else {
     fb.classList.add("esconder");
   }
+
+  /* Minha pontuação + ranking da turma */
+  const meus = (pontuacao && pontuacao[userId] && pontuacao[userId].pontos) || 0;
+  $("meusPts").textContent = meus + (meus === 1 ? " pt" : " pts");
+  renderRankingAluno();
+}
+
+/* Ranking visto pelo aluno: top 5 + a minha posição se eu estiver fora do top */
+function renderRankingAluno() {
+  const arr = Object.keys(pontuacao || {})
+    .map((uid) => ({ uid, nome: (pontuacao[uid] && pontuacao[uid].nome) || "Aluno", pontos: (pontuacao[uid] && pontuacao[uid].pontos) || 0 }))
+    .sort((a, b) => b.pontos - a.pontos || a.nome.localeCompare(b.nome));
+  const card = $("rankCartao");
+  if (arr.length === 0) { card.classList.add("esconder"); return; }
+  card.classList.remove("esconder");
+  const minhaPos = arr.findIndex((a) => a.uid === userId);
+  let lista = arr.slice(0, 5);
+  if (minhaPos >= 5) lista = lista.concat([arr[minhaPos]]);
+  $("rankAluno").innerHTML = lista.map((a) => {
+    const i = arr.indexOf(a);
+    const cls = (i === 0 ? "top1" : i === 1 ? "top2" : i === 2 ? "top3" : "") + (a.uid === userId ? " eu" : "");
+    return `<div class="rank-item ${cls}"><div class="pos">${i + 1}º</div><div class="rnome">${a.nome}</div><div class="rpts">${a.pontos}</div></div>`;
+  }).join("");
 }
 
 /* Se o aluno já tinha entrado antes (nome salvo), pula a tela de entrada. */

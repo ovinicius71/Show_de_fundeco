@@ -4,6 +4,8 @@ README.md
 # OS
 .DS_Store
 Thumbs.db
+package-lock.json
+package.json
 
 # Editor
 .vscode/
@@ -14,3 +16,5 @@ Thumbs.db
 
 # Screenshots locais
 screenshots/
+node_modules/
+
