@@ -17,14 +17,6 @@
 /* 1) CREDENCIAIS DO FIREBASE                                                  */
 /*    Firebase Console > ⚙ Configurações do projeto > Seus apps > Config SDK  */
 /* -------------------------------------------------------------------------- */
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyDYnirksxGfBd3a_T8kIzH2nBi8stZDqZM",
   authDomain: "show-de-fundeco.firebaseapp.com",
@@ -35,10 +27,6 @@ const firebaseConfig = {
   appId: "1:374542099558:web:22f1e6022db7d1df67f9a7",
   measurementId: "G-X9RTYY1EM1"
 };
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 
 
 /* -------------------------------------------------------------------------- */
