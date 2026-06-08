@@ -181,6 +181,18 @@
 const LETRAS = ["A", "B", "C", "D"];
 const $ = (id) => document.getElementById(id);
 
+/* Escapa nomes de outros alunos antes de injetar via innerHTML (anti-XSS). */
+function escaparHTML(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* Limpa o nome digitado: tira espaços nas pontas, colapsa espaços internos e
+   limita o tamanho (defesa extra além do maxlength do input). */
+function limparNome(s) {
+  return String(s || "").trim().replace(/\s+/g, " ").slice(0, 24);
+}
+
 /* ---- Identidade persistente ---- */
 function gerarId() { return "u_" + Math.random().toString(36).slice(2) + Date.now().toString(36); }
 let userId   = localStorage.getItem("quiz_userId") || (localStorage.setItem("quiz_userId", gerarId()), localStorage.getItem("quiz_userId"));
@@ -212,8 +224,9 @@ $("btnEntrar").onclick = entrar;
 $("inputNome").addEventListener("keydown", (e) => { if (e.key === "Enter") entrar(); });
 
 function entrar() {
-  const nome = $("inputNome").value.trim();
+  const nome = limparNome($("inputNome").value);
   if (!nome) { $("inputNome").focus(); return; }
+  $("inputNome").value = nome;
   meuNome = nome;
   localStorage.setItem("quiz_nome", nome);
 
@@ -304,9 +317,10 @@ function render() {
   $("qTexto").textContent = q.pergunta;
 
   const t = (typeof estado.tempoRestante === "number") ? estado.tempoRestante : "—";
+  const pausado = !!estado.pausado;
   const elT = $("statusTempo");
-  elT.textContent = aberta ? `${t}s` : (revelada ? "encerrada" : "aguarde");
-  elT.classList.toggle("baixo", aberta && typeof t === "number" && t <= 5);
+  elT.textContent = aberta ? (pausado ? "⏸ pausado" : `${t}s`) : (revelada ? "encerrada" : "aguarde");
+  elT.classList.toggle("baixo", aberta && !pausado && typeof t === "number" && t <= 5);
 
   /* Botões de voto */
   $("botoes").innerHTML = LETRAS.map((l) => {
@@ -398,7 +412,7 @@ function renderRankingAluno() {
   $("rankAluno").innerHTML = lista.map((a) => {
     const i = arr.indexOf(a);
     const cls = (i === 0 ? "top1" : i === 1 ? "top2" : i === 2 ? "top3" : "") + (a.uid === userId ? " eu" : "");
-    return `<div class="rank-item ${cls}"><div class="pos">${i + 1}º</div><div class="rnome">${a.nome}</div><div class="rpts">${a.pontos}</div></div>`;
+    return `<div class="rank-item ${cls}"><div class="pos">${i + 1}º</div><div class="rnome">${escaparHTML(a.nome)}</div><div class="rpts">${a.pontos}</div></div>`;
   }).join("");
 }
 

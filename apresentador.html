@@ -139,8 +139,6 @@
 
   /* Entrada / QR */
   .entrada-qr { display: grid; place-items: center; }
-  #qrApresentador { background: #fff; padding: 10px; border-radius: 12px; line-height: 0; }
-  #qrApresentador img, #qrApresentador canvas { display: block; }
   .entrada-url {
     margin-top: 8px; font-size: 11.5px; color: var(--tx-suave);
     word-break: break-all; text-align: center;
@@ -148,7 +146,7 @@
   .entrada-url b { color: var(--ouro-claro); }
 
   /* Controles */
-  .controles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .controles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
   .controles .btn { padding: 12px 16px; font-size: 15px; }
 
   /* ---------------- Sala de espera (lobby) ---------------- */
@@ -286,7 +284,7 @@
           <div class="timer-ring" id="timerRing" style="--frac:1;">
             <div class="timer-disc">
               <div class="timer-num" id="timerNum">30</div>
-              <div class="timer-lbl">segundos</div>
+              <div class="timer-lbl" id="timerLbl">segundos</div>
             </div>
           </div>
         </div>
@@ -303,19 +301,12 @@
         <div class="placar-sub" id="placarSub">perguntas em que a maioria acertou</div>
         <div class="placar-pts" id="placarPts"></div>
       </div>
-
-      <div class="bloco cartao">
-        <h3>Entrar pelo celular</h3>
-        <div class="entrada-qr">
-          <div id="qrApresentador"></div>
-          <div class="entrada-url">Acesse: <b id="urlAluno">aluno.html</b></div>
-        </div>
-      </div>
     </aside>
   </div>
 
   <!-- Controles -->
   <footer class="controles esconder" id="telaControles">
+    <button class="btn btn-fantasma" id="btnPausar">⏸ Pausar</button>
     <button class="btn btn-verde" id="btnRevelar">Revelar resposta</button>
     <button class="btn btn-ouro" id="btnProxima">Próxima pergunta ›</button>
     <button class="btn btn-fantasma" id="btnReiniciar">↺ Reiniciar quiz</button>
@@ -363,6 +354,14 @@ let tickId      = null;   // setInterval do temporizador
 /* --- Atalhos de DOM --- */
 const $ = (id) => document.getElementById(id);
 
+/* Escapa texto vindo do aluno (nomes) antes de injetar via innerHTML.
+   Sem isso, um nome como "<img src=x onerror=...>" executaria script na tela
+   do projetor, já que as regras do Firebase permitem escrita livre. */
+function escaparHTML(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
 /* ---------------------------------------------------------------------------
    Inicialização
 --------------------------------------------------------------------------- */
@@ -373,14 +372,8 @@ if (RTDB.modo === "local") $("avisoDemo").classList.remove("esconder");
 (function montarEntrada() {
   const urlAluno = new URL("aluno.html", window.location.href).href;
   const limpo = urlAluno.replace(/^https?:\/\//, "");
-  $("urlAluno").textContent = limpo;
   $("urlAlunoLobby").textContent = limpo;
   try {
-    new QRCode($("qrApresentador"), {
-      text: urlAluno, width: 150, height: 150,
-      colorDark: "#10131c", colorLight: "#ffffff",
-      correctLevel: QRCode.CorrectLevel.M
-    });
     new QRCode($("qrLobby"), {
       text: urlAluno, width: 170, height: 170,
       colorDark: "#10131c", colorLight: "#ffffff",
@@ -407,9 +400,10 @@ function assinarTudo() {
   RTDB.onValue("quiz/estado", (val) => {
     estado = val || { quizIniciado: false, quizFinalizado: false, perguntaAtual: 0, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO };
     sincronizarListenerDeVotos();
-    // Se recarregou a página com votação aberta, retoma o tique-taque.
-    if (estado.votacaoAberta && !tickId) iniciarTick();
-    if (!estado.votacaoAberta && tickId) pararTick();
+    // Roda o tique-taque só com votação aberta E não pausada. Reage tanto a
+    // recarregar a página (retoma) quanto a pausar/retomar pelo botão.
+    if (estado.votacaoAberta && !estado.pausado && !tickId) iniciarTick();
+    if ((!estado.votacaoAberta || estado.pausado) && tickId) pararTick();
     render();
   });
 
@@ -454,9 +448,16 @@ function iniciarQuiz() {
   pararTick();
   RTDB.update("quiz/estado", {
     quizIniciado: true, perguntaAtual: 0,
-    votacaoAberta: true, respostaRevelada: false, tempoRestante: TEMPO_PADRAO
+    votacaoAberta: true, respostaRevelada: false, pausado: false, tempoRestante: TEMPO_PADRAO
   });
   iniciarTick();
+}
+/* Pausa/retoma o cronômetro. Só escreve o flag `pausado` no estado — o listener
+   acima é quem efetivamente para ou retoma o tique-taque, mantendo o apresentador
+   como única fonte do tempo. Só faz sentido com a votação aberta. */
+function alternarPausa() {
+  if (!estado || !estado.votacaoAberta || estado.respostaRevelada) return;
+  RTDB.update("quiz/estado", { pausado: !estado.pausado });
 }
 /* Pontos de um acerto, ponderados pelo tempo que ainda restava no voto.
    respostas[uid] no formato novo é { letra, restante }; aceita também o
@@ -499,7 +500,7 @@ function proximaPergunta() {
   const idx = Math.min((estado.perguntaAtual || 0) + 1, PERGUNTAS.length - 1);
   pararTick();
   RTDB.update("quiz/estado", {
-    perguntaAtual: idx, votacaoAberta: true, respostaRevelada: false, tempoRestante: TEMPO_PADRAO
+    perguntaAtual: idx, votacaoAberta: true, respostaRevelada: false, pausado: false, tempoRestante: TEMPO_PADRAO
   });
   iniciarTick();
 }
@@ -525,12 +526,13 @@ function reiniciarQuiz() {
   RTDB.remove("quiz/pontuacao");
   RTDB.update("quiz/estado", {
     quizIniciado: false, quizFinalizado: false, perguntaAtual: 0, votacaoAberta: false,
-    respostaRevelada: false, tempoRestante: TEMPO_PADRAO,
+    respostaRevelada: false, pausado: false, tempoRestante: TEMPO_PADRAO,
     sessao: ((estado && estado.sessao) || 0) + 1
   });
 }
 
 $("btnIniciar").onclick    = iniciarQuiz;
+$("btnPausar").onclick     = alternarPausa;
 $("btnRevelar").onclick    = revelarResposta;
 $("btnProxima").onclick    = avancar;
 $("btnReiniciar").onclick  = reiniciarQuiz;
@@ -607,6 +609,7 @@ function render() {
   const baixo = t <= 5;
   ring.style.setProperty("--cor-timer", baixo ? "var(--errado)" : "var(--ouro)");
   ring.classList.toggle("baixo", baixo);
+  $("timerLbl").textContent = estado.pausado ? "⏸ pausado" : "segundos";
 
   /* Placar da turma */
   const res = resultados || {};
@@ -625,6 +628,8 @@ function render() {
 
   /* Estado dos botões */
   const ultima = idx >= PERGUNTAS.length - 1;
+  $("btnPausar").disabled = revelada || !estado.votacaoAberta;
+  $("btnPausar").textContent = estado.pausado ? "▶ Retomar" : "⏸ Pausar";
   $("btnRevelar").disabled = revelada;
   $("btnProxima").disabled = false;
   $("btnProxima").textContent = ultima ? "Ver resultado final ›" : "Próxima pergunta ›";
@@ -653,7 +658,7 @@ function renderLobby(frescas) {
     .map((p) => (p.nome || "Aluno"))
     .sort((a, b) => a.localeCompare(b));
   el.innerHTML = nomes.map((nome) =>
-    `<div class="aluno-chip"><span class="pingo"></span>${nome}</div>`
+    `<div class="aluno-chip"><span class="pingo"></span>${escaparHTML(nome)}</div>`
   ).join("");
 }
 
@@ -677,7 +682,7 @@ function renderRanking() {
     return `
       <div class="rank-item ${cls}">
         <div class="pos">${i + 1}º</div>
-        <div class="rnome">${a.nome}</div>
+        <div class="rnome">${escaparHTML(a.nome)}</div>
         <div class="rpts">${a.pontos}</div>
       </div>`;
   }).join("");
@@ -699,7 +704,7 @@ function renderFinal() {
       <div class="podio-col podio-${rank + 1}">
         <div class="podio-card cartao">
           <div class="podio-medalha">${medalhas[rank]}</div>
-          <div class="podio-nome">${a.nome}</div>
+          <div class="podio-nome">${escaparHTML(a.nome)}</div>
           <div class="podio-pts">${a.pontos}</div>
         </div>
         <div class="podio-base"><span>${rank + 1}</span></div>
@@ -717,7 +722,7 @@ function renderFinal() {
     return `
       <div class="rank-item ${cls}">
         <div class="pos">${i + 1}º</div>
-        <div class="rnome">${a.nome}</div>
+        <div class="rnome">${escaparHTML(a.nome)}</div>
         <div class="rpts">${a.pontos} pts</div>
       </div>`;
   }).join("");
