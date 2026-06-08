@@ -37,34 +37,104 @@ const firebaseConfig = {
 /* -------------------------------------------------------------------------- */
 const PERGUNTAS = [
   {
-    pergunta: "Em economia, o conceito de \u201cescassez\u201d se refere a:",
+    pergunta: "Qual das funções econômicas do setor público está associada ao fornecimento de bens públicos e à correção de externalidades na produção ou consumo?",
     opcoes: {
-      A: "Falta de dinheiro no banco central",
-      B: "Recursos limitados diante de necessidades ilimitadas",
-      C: "A aus\u00eancia total de um produto no mercado",
-      D: "Um excesso de oferta de determinado bem"
+      A: "Função estabilizadora",
+      B: "Função distributiva",
+      C: "Função alocativa",
+      D: "Função de crescimento econômico"
+    },
+    correta: "C"
+  },
+  {
+    pergunta: "A função distributiva do governo se efetiva principalmente quando o Estado:",
+    opcoes: {
+      A: "Emite moeda para financiar seus gastos correntes",
+      B: "Retira recursos dos segmentos mais ricos via tributação e os transfere aos menos favorecidos",
+      C: "Corrige as flutuações do nível de emprego e de preços",
+      D: "Fornece bens de consumo coletivo não exclusivos e não rivais"
     },
     correta: "B"
   },
   {
-    pergunta: "Pela lei da demanda, mantidas as demais condi\u00e7\u00f5es constantes, quando o pre\u00e7o de um bem sobe, a quantidade demandada tende a:",
+    pergunta: "O princípio da neutralidade na teoria da tributação estabelece que um bom tributo deve:",
     opcoes: {
-      A: "Aumentar",
-      B: "Permanecer exatamente igual",
-      C: "Diminuir",
-      D: "Dobrar imediatamente"
+      A: "Distribuir seu ônus de forma justa entre os indivíduos",
+      B: "Ser cobrado de acordo com a capacidade de pagamento de cada agente",
+      C: "Não alterar os preços relativos, minimizando a interferência nas decisões econômicas",
+      D: "Vincular o pagamento ao benefício marginal recebido pelo contribuinte"
     },
     correta: "C"
   },
   {
-    pergunta: "O custo de oportunidade de uma escolha \u00e9 melhor definido como:",
+    pergunta: "De acordo com o princípio da capacidade de pagamento, quais são as medidas utilizadas para auferir essa capacidade?",
     opcoes: {
-      A: "O valor pago em impostos sobre a compra",
-      B: "O total de dinheiro gasto na transa\u00e7\u00e3o",
-      C: "O valor da melhor alternativa que foi abandonada",
-      D: "O lucro l\u00edquido obtido no neg\u00f3cio"
+      A: "Renda, consumo e patrimônio",
+      B: "Lucro, juros e dividendos",
+      C: "Salário, aposentadoria e herança",
+      D: "Importações, exportações e poupança"
+    },
+    correta: "A"
+  },
+  {
+    pergunta: "Uma estrutura tributária é considerada regressiva quando:",
+    opcoes: {
+      A: "Todos os contribuintes pagam a mesma parcela de imposto em relação à sua renda",
+      B: "A alíquota aumenta à medida que a renda do contribuinte aumenta",
+      C: "Quanto maior a renda do contribuinte, menor a tributação em proporção à sua renda",
+      D: "O imposto incide apenas sobre artigos de luxo"
     },
     correta: "C"
+  },
+  {
+    pergunta: "Sobre a Curva de Lafer, o capítulo afirma que, a partir de determinado nível da alíquota, qualquer elevação da taxa:",
+    opcoes: {
+      A: "Aumenta proporcionalmente a arrecadação global",
+      B: "Resulta em redução da arrecadação global, devido à evasão, à elisão e ao desestímulo aos negócios",
+      C: "Mantém a arrecadação constante indefinidamente",
+      D: "Torna o imposto automaticamente progressivo"
+    },
+    correta: "B"
+  },
+  {
+    pergunta: "Qual a principal diferença entre os impostos sobre valor adicionado e os impostos em cascata?",
+    opcoes: {
+      A: "Os impostos em cascata incidem apenas sobre a renda, e os de valor adicionado sobre o consumo",
+      B: "Os impostos sobre valor adicionado descontam o valor cobrado nas etapas anteriores, enquanto os em cascata são cobrados em todas as transações intermediárias",
+      C: "Os impostos em cascata são sempre progressivos",
+      D: "Não há diferença prática entre eles quanto à competitividade dos produtos"
+    },
+    correta: "B"
+  },
+  {
+    pergunta: "O efeito anticíclico do imposto progressivo sobre a renda disponível, que freia o consumo em cenários inflacionários e alivia a carga na recessão, é também chamado de:",
+    opcoes: {
+      A: "Imposto inflacionário",
+      B: "Equivalência ricardiana",
+      C: "Estabilizador automático",
+      D: "Monetização da dívida"
+    },
+    correta: "C"
+  },
+  {
+    pergunta: "O déficit operacional do setor público é medido pelo:",
+    opcoes: {
+      A: "Déficit primário acrescido dos juros reais da dívida passada",
+      B: "Déficit nominal acrescido da correção monetária e cambial",
+      C: "Total de gastos públicos correntes menos a emissão de moeda",
+      D: "Saldo da dívida pública em um dado instante do tempo"
+    },
+    correta: "A"
+  },
+  {
+    pergunta: "Quando o governo financia seu déficit por meio da emissão de moeda (Tesouro pedindo emprestado ao Banco Central), trata-se de uma forma:",
+    opcoes: {
+      A: "Que eleva o endividamento público junto ao setor privado, mas não é inflacionária",
+      B: "Eminentemente inflacionária, que cria o imposto inflacionário (monetização da dívida)",
+      C: "Que reduz automaticamente a razão dívida pública/PIB",
+      D: "Permitida sem restrições ao Banco Central pela Constituição brasileira"
+    },
+    correta: "B"
   }
 ];
 
@@ -73,7 +143,7 @@ const PERGUNTAS = [
 /* 3) NOME DO QUIZ (aparece no cabeçalho das telas) — opcional                */
 /* -------------------------------------------------------------------------- */
 const NOME_DO_QUIZ   = "DESAFIO RELÂMPAGO";
-const TEMPO_PADRAO   = 30; // segundos da votação
+const TEMPO_PADRAO   = 15; // segundos da votação
 
 
 /* -------------------------------------------------------------------------- */
