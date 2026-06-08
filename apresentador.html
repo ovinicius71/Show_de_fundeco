@@ -186,6 +186,38 @@
   #qrLobby { background: #fff; padding: 10px; border-radius: 12px; line-height: 0; }
   #qrLobby img, #qrLobby canvas { display: block; }
 
+  /* ---------------- Tela de resultado final ---------------- */
+  .final { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding-bottom: 6px; }
+  .final-cab { text-align: center; }
+  .final-rotulo {
+    font-family: var(--fonte-display); font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ouro); font-size: 13px; margin-bottom: 8px;
+  }
+  .final-titulo { font-size: clamp(30px, 4vw, 52px); line-height: 1.08; text-wrap: balance; }
+  .final-sub { color: var(--tx-suave); font-size: 15px; margin-top: 8px; }
+
+  /* Pódio */
+  .podio { display: grid; grid-template-columns: 1fr 1.12fr 1fr; gap: 14px; align-items: end; width: 100%; max-width: 900px; margin: 4px auto 0; }
+  .podio-col { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+  .podio-card { text-align: center; padding: 18px 14px; }
+  .podio-medalha { font-size: 34px; line-height: 1; }
+  .podio-nome { font-family: var(--fonte-display); font-weight: 700; font-size: 18px; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .podio-pts { font-family: var(--fonte-display); font-weight: 800; font-size: 28px; color: var(--ouro-claro); margin-top: 2px; }
+  .podio-base {
+    border-radius: 14px 14px 0 0; display: grid; place-items: center;
+    font-family: var(--fonte-display); font-weight: 800; font-size: 40px; color: oklch(0.24 0.06 70);
+    box-shadow: inset 0 2px 0 oklch(1 0 0 / 0.3);
+  }
+  .podio-1 .podio-base { height: 124px; background: linear-gradient(180deg, var(--ouro-claro), var(--ouro-escuro)); }
+  .podio-1 .podio-card { box-shadow: 0 24px 60px -30px oklch(0 0 0 / 0.85), 0 0 30px -8px oklch(0.83 0.145 88 / 0.55), inset 0 1px 0 oklch(1 0 0 / 0.08); border-color: oklch(0.75 0.13 85); }
+  .podio-2 .podio-base { height: 92px; background: linear-gradient(180deg, oklch(0.86 0.02 250), oklch(0.62 0.02 250)); color: oklch(0.24 0.02 250); }
+  .podio-3 .podio-base { height: 66px; background: linear-gradient(180deg, oklch(0.74 0.11 56), oklch(0.52 0.12 56)); color: oklch(0.99 0.01 60); }
+
+  /* Lista completa (todos) */
+  .final-lista { padding: 14px; width: 100%; max-width: 900px; margin: 0 auto; display: grid; gap: 8px; }
+  .final-reiniciar { align-self: center; margin-top: 2px; padding: 12px 28px; }
+
   @media (max-width: 1080px) {
     .corpo { grid-template-columns: 1fr; }
     .lateral { grid-template-columns: 1fr 1fr; }
@@ -219,7 +251,6 @@
       <div class="lobby-main cartao moldura">
         <div class="lobby-rotulo">Sala de espera</div>
         <h1 class="lobby-titulo">Aguardando os alunos entrarem…</h1>
-        <p class="lobby-sub">Os nomes aparecem aqui conforme os alunos entram pelo celular. Quando a turma estiver pronta, clique em <b>Iniciar</b> para começar o quiz.</p>
         <div class="lobby-contagem"><span id="lobbyCount">0</span> aluno(s) na sala</div>
         <div class="lobby-alunos" id="lobbyAlunos">
           <div class="lobby-vazio">Ninguém entrou ainda. Compartilhe o QR ao lado.</div>
@@ -289,6 +320,21 @@
     <button class="btn btn-ouro" id="btnProxima">Próxima pergunta ›</button>
     <button class="btn btn-fantasma" id="btnReiniciar">↺ Reiniciar quiz</button>
   </footer>
+
+  <!-- ====================== TELA FINAL (RESULTADO) ====================== -->
+  <section class="final esconder" id="telaFinal">
+    <div class="final-cab">
+      <div class="final-rotulo">Fim do quiz</div>
+      <h1 class="final-titulo">🏆 Resultado final</h1>
+      <p class="final-sub">Resposta certa vale mais quanto mais rápido o aluno responde.</p>
+    </div>
+
+    <div class="podio" id="podio"><!-- preenchido via JS --></div>
+
+    <div class="final-lista cartao" id="rankingFinal"><!-- preenchido via JS --></div>
+
+    <button class="btn btn-fantasma final-reiniciar" id="btnReiniciar2">↺ Reiniciar quiz</button>
+  </section>
 </div>
 
 <script src="config.js"></script>
@@ -359,7 +405,7 @@ async function garantirEstadoInicial() {
 --------------------------------------------------------------------------- */
 function assinarTudo() {
   RTDB.onValue("quiz/estado", (val) => {
-    estado = val || { quizIniciado: false, perguntaAtual: 0, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO };
+    estado = val || { quizIniciado: false, quizFinalizado: false, perguntaAtual: 0, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO };
     sincronizarListenerDeVotos();
     // Se recarregou a página com votação aberta, retoma o tique-taque.
     if (estado.votacaoAberta && !tickId) iniciarTick();
@@ -412,24 +458,40 @@ function iniciarQuiz() {
   });
   iniciarTick();
 }
+/* Pontos de um acerto, ponderados pelo tempo que ainda restava no voto.
+   respostas[uid] no formato novo é { letra, restante }; aceita também o
+   formato antigo (apenas a letra) por segurança. */
+function pontosPorTempo(r) {
+  const restante = (r && typeof r === "object" && typeof r.restante === "number") ? r.restante : 0;
+  const frac = Math.max(0, Math.min(1, restante / TEMPO_PADRAO));
+  return PONTOS_ACERTO_BASE + Math.round(PONTOS_TEMPO_MAX * frac);
+}
+
+/* Contabiliza a pontuação de uma pergunta UMA única vez (idempotente: usa a
+   existência de quiz/resultados/idx como trava). Chamada ao revelar e também
+   ao finalizar (para garantir que a última pergunta seja somada). */
+async function contabilizar(idx) {
+  const jaContado = await RTDB.get("quiz/resultados/" + idx);
+  if (jaContado !== null) return;
+  const respostas = (await RTDB.get("quiz/respostas/" + idx)) || {};
+  const correta = PERGUNTAS[idx].correta;
+  Object.keys(respostas).forEach((uid) => {
+    const r = respostas[uid];
+    const letra = (r && typeof r === "object") ? r.letra : r;   // novo vs. antigo
+    if (letra === correta) {
+      RTDB.transaction("quiz/pontuacao/" + uid + "/pontos", (p) => (p || 0) + pontosPorTempo(r));
+    }
+  });
+  const maioria = opcaoMaisVotada(votos);
+  const acertou = !!maioria && maioria === correta;
+  RTDB.set("quiz/resultados/" + idx, acertou);
+}
+
 async function revelarResposta() {
   pararTick();
   const idx = estado.perguntaAtual || 0;
-  // Pontuação: só conta UMA vez por pergunta (se resultados/idx ainda não existe).
-  const jaContado = await RTDB.get("quiz/resultados/" + idx);
-  if (jaContado === null) {
-    const respostas = (await RTDB.get("quiz/respostas/" + idx)) || {};
-    const correta = PERGUNTAS[idx].correta;
-    Object.keys(respostas).forEach((uid) => {
-      if (respostas[uid] === correta) {
-        RTDB.transaction("quiz/pontuacao/" + uid + "/pontos", (p) => (p || 0) + 1);
-      }
-    });
-  }
-  const maioria = opcaoMaisVotada(votos);
-  const acertou = !!maioria && maioria === PERGUNTAS[idx].correta;
+  await contabilizar(idx);
   RTDB.update("quiz/estado", { respostaRevelada: true, votacaoAberta: false });
-  RTDB.set("quiz/resultados/" + idx, acertou);
 }
 /* Próxima pergunta: avança e já reabre a votação com o tempo correndo,
    repetindo o mesmo ciclo da pergunta anterior. */
@@ -441,23 +503,38 @@ function proximaPergunta() {
   });
   iniciarTick();
 }
+/* Encerra o quiz e mostra a tela de resultado final. Garante que a última
+   pergunta seja pontuada mesmo que não tenha sido revelada manualmente. */
+async function finalizarQuiz() {
+  pararTick();
+  const idx = estado.perguntaAtual || 0;
+  await contabilizar(idx);
+  RTDB.update("quiz/estado", { quizFinalizado: true, respostaRevelada: true, votacaoAberta: false });
+}
+/* O botão "Próxima" vira "Ver resultado final" na última pergunta. */
+function avancar() {
+  const ultima = (estado.perguntaAtual || 0) >= PERGUNTAS.length - 1;
+  if (ultima) finalizarQuiz(); else proximaPergunta();
+}
 function reiniciarQuiz() {
-  if (!confirm("Reiniciar o quiz? Isso volta para a pergunta 1, apaga os votos e zera o ranking.")) return;
+  if (!confirm("Reiniciar o quiz? Isso volta para a sala de espera, apaga os votos e zera o ranking.")) return;
   pararTick();
   RTDB.remove("quiz/votos");
   RTDB.remove("quiz/resultados");
   RTDB.remove("quiz/respostas");
   RTDB.remove("quiz/pontuacao");
   RTDB.update("quiz/estado", {
-    quizIniciado: false, perguntaAtual: 0, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO,
+    quizIniciado: false, quizFinalizado: false, perguntaAtual: 0, votacaoAberta: false,
+    respostaRevelada: false, tempoRestante: TEMPO_PADRAO,
     sessao: ((estado && estado.sessao) || 0) + 1
   });
 }
 
-$("btnIniciar").onclick   = iniciarQuiz;
-$("btnRevelar").onclick   = revelarResposta;
-$("btnProxima").onclick   = proximaPergunta;
-$("btnReiniciar").onclick = reiniciarQuiz;
+$("btnIniciar").onclick    = iniciarQuiz;
+$("btnRevelar").onclick    = revelarResposta;
+$("btnProxima").onclick    = avancar;
+$("btnReiniciar").onclick  = reiniciarQuiz;
+$("btnReiniciar2").onclick = reiniciarQuiz;
 
 /* ---------------------------------------------------------------------------
    Helpers de contagem
@@ -481,11 +558,13 @@ function render() {
   const q = PERGUNTAS[idx];
   const revelada = !!estado.respostaRevelada;
   const iniciado = !!estado.quizIniciado;
+  const finalizado = !!estado.quizFinalizado;
 
-  /* Alterna entre a sala de espera e o quiz em si */
-  $("telaLobby").classList.toggle("esconder", iniciado);
-  $("telaCorpo").classList.toggle("esconder", !iniciado);
-  $("telaControles").classList.toggle("esconder", !iniciado);
+  /* Alterna entre sala de espera, quiz e tela final */
+  $("telaLobby").classList.toggle("esconder", iniciado || finalizado);
+  $("telaCorpo").classList.toggle("esconder", !iniciado || finalizado);
+  $("telaControles").classList.toggle("esconder", !iniciado || finalizado);
+  $("telaFinal").classList.toggle("esconder", !finalizado);
 
   /* Conectados / sala de espera (presença "fresca": últimos 35s) */
   const frescas = presencasFrescas();
@@ -493,6 +572,7 @@ function render() {
   $("conectados").textContent = conn + (conn === 1 ? " conectado" : " conectados");
   $("pontoConn").classList.toggle("off", conn === 0);
 
+  if (finalizado) { renderFinal(); return; }         // tela de resultado final
   if (!iniciado) { renderLobby(frescas); return; }   // na sala de espera, nada mais a desenhar
 
   /* Cabeçalho da pergunta */
@@ -544,8 +624,10 @@ function render() {
   renderRanking();
 
   /* Estado dos botões */
+  const ultima = idx >= PERGUNTAS.length - 1;
   $("btnRevelar").disabled = revelada;
-  $("btnProxima").disabled = idx >= PERGUNTAS.length - 1;
+  $("btnProxima").disabled = false;
+  $("btnProxima").textContent = ultima ? "Ver resultado final ›" : "Próxima pergunta ›";
 }
 
 /* ---------------------------------------------------------------------------
@@ -597,6 +679,46 @@ function renderRanking() {
         <div class="pos">${i + 1}º</div>
         <div class="rnome">${a.nome}</div>
         <div class="rpts">${a.pontos}</div>
+      </div>`;
+  }).join("");
+}
+
+/* ---------------------------------------------------------------------------
+   Tela final: pódio (top 3) + ranking completo com TODOS os alunos
+--------------------------------------------------------------------------- */
+function renderFinal() {
+  const arr = listaOrdenada(pontuacao);   // todo mundo, do maior para o menor
+
+  /* Pódio: exibe 2º, 1º, 3º (centralizado no 1º) */
+  const medalhas = ["🥇", "🥈", "🥉"];
+  const ordemVisual = [1, 0, 2];          // colunas: esquerda=2º, centro=1º, direita=3º
+  $("podio").innerHTML = ordemVisual.map((rank) => {
+    const a = arr[rank];
+    if (!a) return `<div class="podio-col"></div>`;
+    return `
+      <div class="podio-col podio-${rank + 1}">
+        <div class="podio-card cartao">
+          <div class="podio-medalha">${medalhas[rank]}</div>
+          <div class="podio-nome">${a.nome}</div>
+          <div class="podio-pts">${a.pontos}</div>
+        </div>
+        <div class="podio-base"><span>${rank + 1}</span></div>
+      </div>`;
+  }).join("");
+
+  /* Lista completa */
+  const el = $("rankingFinal");
+  if (arr.length === 0) {
+    el.innerHTML = `<div class="rank-vazio">Nenhum aluno participou.</div>`;
+    return;
+  }
+  el.innerHTML = arr.map((a, i) => {
+    const cls = i === 0 ? "top1" : i === 1 ? "top2" : i === 2 ? "top3" : "";
+    return `
+      <div class="rank-item ${cls}">
+        <div class="pos">${i + 1}º</div>
+        <div class="rnome">${a.nome}</div>
+        <div class="rpts">${a.pontos} pts</div>
       </div>`;
   }).join("");
 }

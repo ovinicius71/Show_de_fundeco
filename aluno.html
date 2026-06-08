@@ -150,7 +150,7 @@
       <span class="tempo" id="statusTempo">—</span>
     </div>
 
-    <div class="pergunta-cartao cartao moldura">
+    <div class="pergunta-cartao cartao moldura" id="perguntaCartao">
       <div class="rotulo" id="qRotulo">Pergunta</div>
       <div class="texto" id="qTexto">…</div>
     </div>
@@ -223,6 +223,8 @@ function entrar() {
   $("meuNome").textContent = nome;
 
   registrarPresenca();
+  // Garante que este aluno apareça no ranking final mesmo que nunca pontue.
+  RTDB.update("quiz/pontuacao/" + userId, { nome: meuNome });
   RTDB.onValue("quiz/estado", (val) => { estado = val; render(); });
   RTDB.onValue("quiz/pontuacao", (val) => { pontuacao = val || {}; render(); });
 }
@@ -249,10 +251,12 @@ function votar(idx, letra) {
   if (!estado || !estado.votacaoAberta) return;     // votação fechada
   if (meuVoto(idx)) return;                          // já votou nesta pergunta
   localStorage.setItem(chaveVotoLocal(idx), letra);  // trava local imediato
+  // Quanto tempo ainda restava no cronômetro: base do bônus por velocidade.
+  const restante = (typeof estado.tempoRestante === "number") ? estado.tempoRestante : 0;
   // Incremento atômico do contador no RTDB:
   RTDB.transaction("quiz/votos/" + idx + "/" + letra, (atual) => (atual || 0) + 1);
-  // Registra a resposta deste aluno (para o ranking) e garante o nome no placar:
-  RTDB.set("quiz/respostas/" + idx + "/" + userId, letra);
+  // Registra a resposta deste aluno (letra + tempo restante) e garante o nome no placar:
+  RTDB.set("quiz/respostas/" + idx + "/" + userId, { letra: letra, restante: restante });
   RTDB.update("quiz/pontuacao/" + userId, { nome: meuNome });
   render();
 }
@@ -266,7 +270,33 @@ function render() {
   const q = PERGUNTAS[idx];
   const revelada = !!estado.respostaRevelada;
   const aberta   = !!estado.votacaoAberta;
+  const finalizado = !!estado.quizFinalizado;
   const escolha  = meuVoto(idx);
+
+  /* ----- Tela final: quiz encerrado ----- */
+  if (finalizado) {
+    $("perguntaCartao").classList.add("esconder");
+    $("botoes").classList.add("esconder");
+    $("statusRotulo").textContent = "Quiz encerrado";
+    const elTf = $("statusTempo"); elTf.textContent = "fim"; elTf.classList.remove("baixo");
+
+    const arr = rankingOrdenado();
+    const pos = arr.findIndex((a) => a.uid === userId);
+    const meus = (pontuacao && pontuacao[userId] && pontuacao[userId].pontos) || 0;
+
+    const fb = $("feedback");
+    fb.className = "feedback acerto";
+    const lugar = pos >= 0 ? `${pos + 1}º lugar` : "—";
+    fb.innerHTML = `<div class="icone">🏁</div><div class="titulo">Quiz encerrado!</div><div class="desc">Você ficou em <b>${lugar}</b> com ${meus} ${meus === 1 ? "pt" : "pts"}</div>`;
+    fb.classList.remove("esconder");
+
+    $("meusPts").textContent = meus + (meus === 1 ? " pt" : " pts");
+    renderRankingAluno();
+    return;
+  }
+  /* fora do estado final, garante que pergunta e botões voltem a aparecer */
+  $("perguntaCartao").classList.remove("esconder");
+  $("botoes").classList.remove("esconder");
 
   /* Cabeçalho / status */
   $("statusRotulo").textContent = `Pergunta ${idx + 1} de ${PERGUNTAS.length}`;
@@ -344,17 +374,27 @@ function render() {
   renderRankingAluno();
 }
 
-/* Ranking visto pelo aluno: top 5 + a minha posição se eu estiver fora do top */
-function renderRankingAluno() {
-  const arr = Object.keys(pontuacao || {})
+function rankingOrdenado() {
+  return Object.keys(pontuacao || {})
     .map((uid) => ({ uid, nome: (pontuacao[uid] && pontuacao[uid].nome) || "Aluno", pontos: (pontuacao[uid] && pontuacao[uid].pontos) || 0 }))
     .sort((a, b) => b.pontos - a.pontos || a.nome.localeCompare(b.nome));
+}
+
+/* Ranking visto pelo aluno: top 5 + a minha posição se eu estiver fora do top.
+   No estado final, mostra todo mundo. */
+function renderRankingAluno() {
+  const arr = rankingOrdenado();
   const card = $("rankCartao");
   if (arr.length === 0) { card.classList.add("esconder"); return; }
   card.classList.remove("esconder");
   const minhaPos = arr.findIndex((a) => a.uid === userId);
-  let lista = arr.slice(0, 5);
-  if (minhaPos >= 5) lista = lista.concat([arr[minhaPos]]);
+  let lista;
+  if (estado && estado.quizFinalizado) {
+    lista = arr;                                  // no fim, todo mundo aparece
+  } else {
+    lista = arr.slice(0, 5);
+    if (minhaPos >= 5) lista = lista.concat([arr[minhaPos]]);
+  }
   $("rankAluno").innerHTML = lista.map((a) => {
     const i = arr.indexOf(a);
     const cls = (i === 0 ? "top1" : i === 1 ? "top2" : i === 2 ? "top3" : "") + (a.uid === userId ? " eu" : "");

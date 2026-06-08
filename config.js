@@ -143,7 +143,18 @@ const PERGUNTAS = [
 /* 3) NOME DO QUIZ (aparece no cabeçalho das telas) — opcional                */
 /* -------------------------------------------------------------------------- */
 const NOME_DO_QUIZ   = "DESAFIO RELÂMPAGO";
-const TEMPO_PADRAO   = 15; // segundos da votação
+const TEMPO_PADRAO   = 30; // segundos da votação
+
+/* -------------------------------------------------------------------------- */
+/* 4) PONTUAÇÃO — resposta certa vale mais quanto mais rápido o aluno responde */
+/*    Fórmula por pergunta (só para quem ACERTA):                              */
+/*        pontos = PONTOS_ACERTO_BASE + PONTOS_TEMPO_MAX * (tRestante / TEMPO)  */
+/*    Acertar garante a base; o bônus é proporcional ao tempo que ainda        */
+/*    restava no cronômetro no instante do voto (respondeu mais rápido →       */
+/*    sobrou mais tempo → ganha mais). Quem erra ou não vota recebe 0.         */
+/* -------------------------------------------------------------------------- */
+const PONTOS_ACERTO_BASE = 500; // garantido ao acertar (independe do tempo)
+const PONTOS_TEMPO_MAX   = 500; // bônus máximo (resposta instantânea)
 
 
 /* -------------------------------------------------------------------------- */
