@@ -232,7 +232,7 @@ function entrar() {
 --------------------------------------------------------------------------- */
 function registrarPresenca() {
   const caminho = "quiz/presenca/" + userId;
-  const bater = () => RTDB.set(caminho, Date.now());
+  const bater = () => RTDB.set(caminho, { nome: meuNome, ts: Date.now() });
   bater();
   RTDB.onDisconnectRemove(caminho);
   setInterval(bater, 15000);

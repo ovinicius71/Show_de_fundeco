@@ -148,13 +148,49 @@
   .entrada-url b { color: var(--ouro-claro); }
 
   /* Controles */
-  .controles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .controles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .controles .btn { padding: 12px 16px; font-size: 15px; }
+
+  /* ---------------- Sala de espera (lobby) ---------------- */
+  .lobby { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .lobby-grid { display: grid; grid-template-columns: 1fr 320px; gap: 16px; flex: 1; min-height: 0; align-items: start; }
+  .lobby-main { padding: clamp(20px, 3vw, 40px); display: flex; flex-direction: column; min-height: 0; height: 100%; }
+  .lobby-rotulo {
+    font-family: var(--fonte-display); font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ouro); font-size: 13px; margin-bottom: 12px;
+  }
+  .lobby-titulo { font-size: clamp(26px, 3vw, 42px); line-height: 1.12; margin-bottom: 10px; text-wrap: balance; }
+  .lobby-sub { color: var(--tx-suave); font-size: 15.5px; line-height: 1.5; margin-bottom: 18px; max-width: 60ch; }
+  .lobby-sub b { color: var(--ouro-claro); }
+  .lobby-contagem { font-family: var(--fonte-display); font-weight: 700; font-size: 14px; color: var(--tx-fraco); letter-spacing: .04em; margin-bottom: 14px; }
+  .lobby-contagem span { color: var(--ouro-claro); font-size: 18px; }
+  .lobby-alunos {
+    flex: 1; min-height: 0; overflow-y: auto;
+    display: flex; flex-wrap: wrap; align-content: flex-start; gap: 10px;
+    padding: 4px; margin-bottom: 18px;
+  }
+  .aluno-chip {
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 10px 16px; border-radius: 999px;
+    background: linear-gradient(180deg, oklch(0.31 0.10 262), oklch(0.21 0.09 264));
+    border: 1px solid oklch(0.58 0.10 256 / 0.7);
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.12), 0 10px 22px -16px #000;
+    font-weight: 600; font-size: 16px; animation: surgir .3s ease;
+  }
+  .aluno-chip .pingo { width: 9px; height: 9px; border-radius: 50%; background: var(--certo); box-shadow: 0 0 0 3px oklch(0.74 0.19 150 / 0.25); }
+  .lobby-vazio { color: var(--tx-fraco); font-size: 14px; padding: 20px; }
+  .lobby-iniciar { align-self: flex-start; padding: 16px 44px; font-size: 19px; }
+  .lobby-lateral { padding: 18px; }
+  .lobby-lateral h3 { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--tx-fraco); margin-bottom: 12px; font-weight: 700; }
+  #qrLobby { background: #fff; padding: 10px; border-radius: 12px; line-height: 0; }
+  #qrLobby img, #qrLobby canvas { display: block; }
 
   @media (max-width: 1080px) {
     .corpo { grid-template-columns: 1fr; }
     .lateral { grid-template-columns: 1fr 1fr; }
     .controles { grid-template-columns: 1fr 1fr; }
+    .lobby-grid { grid-template-columns: 1fr; }
   }
   @media (max-width: 620px) {
     .lateral { grid-template-columns: 1fr; }
@@ -177,8 +213,32 @@
     </div>
   </header>
 
+  <!-- ====================== SALA DE ESPERA (LOBBY) ====================== -->
+  <section class="lobby esconder" id="telaLobby">
+    <div class="lobby-grid">
+      <div class="lobby-main cartao moldura">
+        <div class="lobby-rotulo">Sala de espera</div>
+        <h1 class="lobby-titulo">Aguardando os alunos entrarem…</h1>
+        <p class="lobby-sub">Os nomes aparecem aqui conforme os alunos entram pelo celular. Quando a turma estiver pronta, clique em <b>Iniciar</b> para começar o quiz.</p>
+        <div class="lobby-contagem"><span id="lobbyCount">0</span> aluno(s) na sala</div>
+        <div class="lobby-alunos" id="lobbyAlunos">
+          <div class="lobby-vazio">Ninguém entrou ainda. Compartilhe o QR ao lado.</div>
+        </div>
+        <button class="btn btn-ouro lobby-iniciar" id="btnIniciar">▶ Iniciar</button>
+      </div>
+
+      <aside class="lobby-lateral cartao">
+        <h3>Entrar pelo celular</h3>
+        <div class="entrada-qr">
+          <div id="qrLobby"></div>
+          <div class="entrada-url">Acesse: <b id="urlAlunoLobby">aluno.html</b></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
   <!-- Corpo -->
-  <div class="corpo">
+  <div class="corpo esconder" id="telaCorpo">
 
     <!-- Palco principal -->
     <section class="palco cartao moldura">
@@ -224,10 +284,9 @@
   </div>
 
   <!-- Controles -->
-  <footer class="controles">
-    <button class="btn btn-ouro" id="btnVotacao">Iniciar votação</button>
+  <footer class="controles esconder" id="telaControles">
     <button class="btn btn-verde" id="btnRevelar">Revelar resposta</button>
-    <button class="btn" id="btnProxima">Próxima pergunta ›</button>
+    <button class="btn btn-ouro" id="btnProxima">Próxima pergunta ›</button>
     <button class="btn btn-fantasma" id="btnReiniciar">↺ Reiniciar quiz</button>
   </footer>
 </div>
@@ -267,10 +326,17 @@ if (RTDB.modo === "local") $("avisoDemo").classList.remove("esconder");
 /* QR + URL de entrada do aluno (caminho absoluto, funciona no GitHub Pages) */
 (function montarEntrada() {
   const urlAluno = new URL("aluno.html", window.location.href).href;
-  $("urlAluno").textContent = urlAluno.replace(/^https?:\/\//, "");
+  const limpo = urlAluno.replace(/^https?:\/\//, "");
+  $("urlAluno").textContent = limpo;
+  $("urlAlunoLobby").textContent = limpo;
   try {
     new QRCode($("qrApresentador"), {
       text: urlAluno, width: 150, height: 150,
+      colorDark: "#10131c", colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    new QRCode($("qrLobby"), {
+      text: urlAluno, width: 170, height: 170,
       colorDark: "#10131c", colorLight: "#ffffff",
       correctLevel: QRCode.CorrectLevel.M
     });
@@ -282,7 +348,7 @@ async function garantirEstadoInicial() {
   const atual = await RTDB.get("quiz/estado");
   if (!atual) {
     await RTDB.set("quiz/estado", {
-      perguntaAtual: 0, votacaoAberta: false,
+      quizIniciado: false, perguntaAtual: 0, votacaoAberta: false,
       respostaRevelada: false, tempoRestante: TEMPO_PADRAO
     });
   }
@@ -293,7 +359,7 @@ async function garantirEstadoInicial() {
 --------------------------------------------------------------------------- */
 function assinarTudo() {
   RTDB.onValue("quiz/estado", (val) => {
-    estado = val || { perguntaAtual: 0, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO };
+    estado = val || { quizIniciado: false, perguntaAtual: 0, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO };
     sincronizarListenerDeVotos();
     // Se recarregou a página com votação aberta, retoma o tique-taque.
     if (estado.votacaoAberta && !tickId) iniciarTick();
@@ -336,15 +402,15 @@ function pararTick() { if (tickId) { clearInterval(tickId); tickId = null; } }
 /* ---------------------------------------------------------------------------
    Ações dos botões
 --------------------------------------------------------------------------- */
-function abrirOuRetomarVotacao() {
-  let t = estado.tempoRestante;
-  if (!t || t <= 0) t = TEMPO_PADRAO;                 // recomeça do zero se zerou
-  RTDB.update("quiz/estado", { votacaoAberta: true, respostaRevelada: false, tempoRestante: t });
-  iniciarTick();
-}
-function pausarVotacao() {
+/* Inicia o quiz a partir da sala de espera: vai para a 1ª pergunta e já abre
+   a votação com o tempo correndo (sem passo manual de "Iniciar votação"). */
+function iniciarQuiz() {
   pararTick();
-  RTDB.update("quiz/estado", { votacaoAberta: false });
+  RTDB.update("quiz/estado", {
+    quizIniciado: true, perguntaAtual: 0,
+    votacaoAberta: true, respostaRevelada: false, tempoRestante: TEMPO_PADRAO
+  });
+  iniciarTick();
 }
 async function revelarResposta() {
   pararTick();
@@ -365,12 +431,15 @@ async function revelarResposta() {
   RTDB.update("quiz/estado", { respostaRevelada: true, votacaoAberta: false });
   RTDB.set("quiz/resultados/" + idx, acertou);
 }
+/* Próxima pergunta: avança e já reabre a votação com o tempo correndo,
+   repetindo o mesmo ciclo da pergunta anterior. */
 function proximaPergunta() {
   const idx = Math.min((estado.perguntaAtual || 0) + 1, PERGUNTAS.length - 1);
   pararTick();
   RTDB.update("quiz/estado", {
-    perguntaAtual: idx, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO
+    perguntaAtual: idx, votacaoAberta: true, respostaRevelada: false, tempoRestante: TEMPO_PADRAO
   });
+  iniciarTick();
 }
 function reiniciarQuiz() {
   if (!confirm("Reiniciar o quiz? Isso volta para a pergunta 1, apaga os votos e zera o ranking.")) return;
@@ -380,12 +449,12 @@ function reiniciarQuiz() {
   RTDB.remove("quiz/respostas");
   RTDB.remove("quiz/pontuacao");
   RTDB.update("quiz/estado", {
-    perguntaAtual: 0, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO,
+    quizIniciado: false, perguntaAtual: 0, votacaoAberta: false, respostaRevelada: false, tempoRestante: TEMPO_PADRAO,
     sessao: ((estado && estado.sessao) || 0) + 1
   });
 }
 
-$("btnVotacao").onclick   = () => (estado && estado.votacaoAberta) ? pausarVotacao() : abrirOuRetomarVotacao();
+$("btnIniciar").onclick   = iniciarQuiz;
 $("btnRevelar").onclick   = revelarResposta;
 $("btnProxima").onclick   = proximaPergunta;
 $("btnReiniciar").onclick = reiniciarQuiz;
@@ -411,6 +480,20 @@ function render() {
   const idx = estado.perguntaAtual || 0;
   const q = PERGUNTAS[idx];
   const revelada = !!estado.respostaRevelada;
+  const iniciado = !!estado.quizIniciado;
+
+  /* Alterna entre a sala de espera e o quiz em si */
+  $("telaLobby").classList.toggle("esconder", iniciado);
+  $("telaCorpo").classList.toggle("esconder", !iniciado);
+  $("telaControles").classList.toggle("esconder", !iniciado);
+
+  /* Conectados / sala de espera (presença "fresca": últimos 35s) */
+  const frescas = presencasFrescas();
+  const conn = frescas.length;
+  $("conectados").textContent = conn + (conn === 1 ? " conectado" : " conectados");
+  $("pontoConn").classList.toggle("off", conn === 0);
+
+  if (!iniciado) { renderLobby(frescas); return; }   // na sala de espera, nada mais a desenhar
 
   /* Cabeçalho da pergunta */
   $("rotuloPergunta").textContent = `Pergunta ${idx + 1} de ${PERGUNTAS.length}`;
@@ -445,12 +528,6 @@ function render() {
   ring.style.setProperty("--cor-timer", baixo ? "var(--errado)" : "var(--ouro)");
   ring.classList.toggle("baixo", baixo);
 
-  /* Conectados (presença "fresca": últimos 35s) */
-  const agora = Date.now();
-  const conn = presenca ? Object.values(presenca).filter((ts) => agora - ts < 35000).length : 0;
-  $("conectados").textContent = conn + (conn === 1 ? " conectado" : " conectados");
-  $("pontoConn").classList.toggle("off", conn === 0);
-
   /* Placar da turma */
   const res = resultados || {};
   const chaves = Object.keys(res);
@@ -467,16 +544,35 @@ function render() {
   renderRanking();
 
   /* Estado dos botões */
-  const btnV = $("btnVotacao");
-  if (estado.votacaoAberta) {
-    btnV.textContent = "❚❚ Pausar votação";
-  } else if (t > 0 && t < TEMPO_PADRAO && !revelada) {
-    btnV.textContent = "▶ Retomar votação";
-  } else {
-    btnV.textContent = "▶ Iniciar votação";
-  }
   $("btnRevelar").disabled = revelada;
   $("btnProxima").disabled = idx >= PERGUNTAS.length - 1;
+}
+
+/* ---------------------------------------------------------------------------
+   Sala de espera (lobby)
+--------------------------------------------------------------------------- */
+/* Presenças "frescas" (últimos 35s). Aceita o formato novo { nome, ts } e,
+   por segurança, o antigo (apenas timestamp numérico). */
+function presencasFrescas() {
+  const agora = Date.now();
+  return Object.values(presenca || {})
+    .map((p) => (typeof p === "number") ? { nome: "", ts: p } : (p || { nome: "", ts: 0 }))
+    .filter((p) => agora - (p.ts || 0) < 35000);
+}
+
+function renderLobby(frescas) {
+  $("lobbyCount").textContent = frescas.length;
+  const el = $("lobbyAlunos");
+  if (frescas.length === 0) {
+    el.innerHTML = `<div class="lobby-vazio">Ninguém entrou ainda. Compartilhe o QR ao lado.</div>`;
+    return;
+  }
+  const nomes = frescas
+    .map((p) => (p.nome || "Aluno"))
+    .sort((a, b) => a.localeCompare(b));
+  el.innerHTML = nomes.map((nome) =>
+    `<div class="aluno-chip"><span class="pingo"></span>${nome}</div>`
+  ).join("");
 }
 
 /* ---------------------------------------------------------------------------
