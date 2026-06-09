@@ -47,16 +47,6 @@ const PERGUNTAS = [
     correta: "C"
   },
   {
-    pergunta: "A função distributiva do governo se efetiva principalmente quando o Estado:",
-    opcoes: {
-      A: "Emite moeda para financiar seus gastos correntes",
-      B: "Retira recursos dos segmentos mais ricos via tributação e os transfere aos menos favorecidos",
-      C: "Corrige as flutuações do nível de emprego e de preços",
-      D: "Fornece bens de consumo coletivo não exclusivos e não rivais"
-    },
-    correta: "B"
-  },
-  {
     pergunta: "O princípio da neutralidade na teoria da tributação estabelece que um bom tributo deve:",
     opcoes: {
       A: "Distribuir seu ônus de forma justa entre os indivíduos",
@@ -97,16 +87,6 @@ const PERGUNTAS = [
     correta: "B"
   },
   {
-    pergunta: "Qual a principal diferença entre os impostos sobre valor adicionado e os impostos em cascata?",
-    opcoes: {
-      A: "Os impostos em cascata incidem apenas sobre a renda, e os de valor adicionado sobre o consumo",
-      B: "Os impostos sobre valor adicionado descontam o valor cobrado nas etapas anteriores, enquanto os em cascata são cobrados em todas as transações intermediárias",
-      C: "Os impostos em cascata são sempre progressivos",
-      D: "Não há diferença prática entre eles quanto à competitividade dos produtos"
-    },
-    correta: "B"
-  },
-  {
     pergunta: "O efeito anticíclico do imposto progressivo sobre a renda disponível, que freia o consumo em cenários inflacionários e alivia a carga na recessão, é também chamado de:",
     opcoes: {
       A: "Imposto inflacionário",
@@ -125,16 +105,6 @@ const PERGUNTAS = [
       D: "Saldo da dívida pública em um dado instante do tempo"
     },
     correta: "A"
-  },
-  {
-    pergunta: "Quando o governo financia seu déficit por meio da emissão de moeda (Tesouro pedindo emprestado ao Banco Central), trata-se de uma forma:",
-    opcoes: {
-      A: "Que eleva o endividamento público junto ao setor privado, mas não é inflacionária",
-      B: "Eminentemente inflacionária, que cria o imposto inflacionário (monetização da dívida)",
-      C: "Que reduz automaticamente a razão dívida pública/PIB",
-      D: "Permitida sem restrições ao Banco Central pela Constituição brasileira"
-    },
-    correta: "B"
   }
 ];
 
